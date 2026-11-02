@@ -1,108 +1,22 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './shared/guards/auth.guard';
-import { guestGuard } from './shared/guards/guest.guard';
-import { courtAdminGuard, platformAdminGuard, playerGuard } from './shared/guards/plan.guard';
+import { accessRoutes } from '@features/access/access.routes';
+import { administrationRoutes } from '@features/administration/administration.routes';
+import { courtRoutes } from '@features/courts/court.routes';
+import { dashboardRoutes } from '@features/dashboard/dashboard.routes';
+import { marketingRoutes } from '@features/marketing/marketing.routes';
+import { matchRoutes } from '@features/matches/match.routes';
+import { notificationRoutes } from '@features/notifications/notification.routes';
+import { profileRoutes } from '@features/profile/profile.routes';
 
 export const routes: Routes = [
-  {
-    path: '',
-    loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent)
-  },
-  {
-    path: 'register',
-    canActivate: [guestGuard],
-    loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
-  },
-  {
-    path: 'login',
-    loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
-  },
-  {
-    path: 'contactanos',
-    loadComponent: () => import('./pages/contactanos/contactanos.component').then(m => m.ContactanosComponent)
-  },
-  {
-    path: 'planes-jugador',
-    loadComponent: () => import('./pages/planes-jugador/planes-jugador.component').then(m => m.PlanesJugadorComponent)
-  },
-  {
-    path: 'planes-cancha',
-    loadComponent: () => import('./pages/planes-cancha/planes-cancha.component').then(m => m.PlanesCanchaComponent)
-  },
-  {
-    path: 'home',
-    canActivate: [authGuard],
-    loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent)
-  },
-  {
-    path: 'deportes',
-    canActivate: [playerGuard],
-    loadComponent: () => import('./pages/deportes/deportes.component').then(m => m.DeportesComponent)
-  },
-  {
-    path: 'canchas',
-    canActivate: [playerGuard],
-    loadComponent: () => import('./pages/canchas/canchas.component').then(m => m.CanchasComponent)
-  },
-  {
-    path: 'canchas/:id',
-    canActivate: [playerGuard],
-    loadComponent: () => import('./pages/cancha-detail/cancha-detail.component').then(m => m.CanchaDetailComponent)
-  },
-  {
-    path: 'admin-canchas',
-    canActivate: [courtAdminGuard],
-    loadComponent: () => import('./pages/admin-canchas/admin-canchas.component').then(m => m.AdminCanchasComponent)
-  },
-  {
-    path: 'calendar',
-    canActivate: [courtAdminGuard],
-    loadComponent: () => import('./pages/calendar/calendar.component').then(m => m.CalendarComponent)
-  },
-  {
-    path: 'availability',
-    canActivate: [courtAdminGuard],
-    loadComponent: () => import('./pages/availability/availability.component').then(m => m.AvailabilityComponent)
-  },
-  {
-    path: 'reports',
-    canActivate: [courtAdminGuard],
-    loadComponent: () => import('./pages/reports/reports.component').then(m => m.ReportsComponent)
-  },
-  {
-    path: 'admin-users',
-    canActivate: [platformAdminGuard],
-    loadComponent: () => import('./pages/user-management/user-management.component').then(m => m.UserManagementComponent)
-  },
-  {
-    path: 'mis-partidos',
-    canActivate: [playerGuard],
-    loadComponent: () => import('./pages/mis-partidos/mis-partidos.component').then(m => m.MisPartidosComponent)
-  },
-  {
-    path: 'partidos/:id',
-    canActivate: [playerGuard],
-    loadComponent: () => import('./pages/match-detail/match-detail.component').then(m => m.MatchDetailComponent)
-  },
-  {
-    path: 'mi-perfil',
-    canActivate: [authGuard],
-    loadComponent: () => import('./pages/mi-perfil/mi-perfil.component').then(m => m.MiPerfilComponent)
-  },
-  {
-    path: 'notificaciones',
-    canActivate: [authGuard],
-    loadComponent: () => import('./pages/notificaciones/notificaciones.component').then(m => m.NotificacionesComponent)
-  },
-  {
-    path: 'notificaciones/:matchId/:requestId',
-    canActivate: [authGuard],
-    loadComponent: () => import('./pages/notificacion-detalle/notificacion-detalle.component').then(m => m.NotificacionDetalleComponent)
-  },
-  {
-    path: 'profile',
-    redirectTo: 'mi-perfil'
-  },
+  ...marketingRoutes,
+  ...accessRoutes,
+  ...dashboardRoutes,
+  ...matchRoutes,
+  ...courtRoutes,
+  ...profileRoutes,
+  ...notificationRoutes,
+  ...administrationRoutes,
   {
     path: '**',
     redirectTo: ''

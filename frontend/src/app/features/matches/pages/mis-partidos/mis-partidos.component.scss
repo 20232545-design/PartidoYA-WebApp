@@ -1,0 +1,350 @@
+.mis-partidos-wrapper {
+  min-height: 100vh;
+  background-color: #0a0f1a;
+  color: #fff;
+}
+
+.page-header {
+  padding: 3rem 2rem 1.5rem;
+  text-align: center;
+}
+
+.page-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.page-subtitle {
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.5rem;
+}
+
+.content-area {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem 4rem;
+}
+
+.tabs-container {
+  display: flex;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 0.3rem;
+  gap: 0.25rem;
+  margin-bottom: 2rem;
+  width: fit-content;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  border-radius: 11px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+
+  &:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  &.active {
+    background: #c6f135;
+    color: #0a0f1a;
+    font-weight: 700;
+    box-shadow: 0 2px 12px rgba(198, 241, 53, 0.3);
+  }
+}
+
+.tab-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.125rem 0.5rem;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.1);
+
+  .active & {
+    background: rgba(10, 15, 26, 0.15);
+  }
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.matches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
+}
+
+.match-card {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  &:hover {
+    border-color: rgba(198, 241, 53, 0.35);
+    box-shadow: 0 8px 32px rgba(198, 241, 53, 0.08);
+  }
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sport-badge {
+  background: #c6f135;
+  color: #0a0f1a;
+  padding: 0.25rem 0.875rem;
+  border-radius: 50px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.status-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.4);
+
+  &.status-open { color: #4ade80; }
+  &.status-full { color: #fbbf24; }
+  &.status-cancelled { color: #f87171; }
+  &.status-finished { color: rgba(255, 255, 255, 0.35); }
+}
+
+.card-title-link {
+  text-decoration: none;
+  color: inherit;
+
+  &:hover .card-title {
+    color: #c6f135;
+  }
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  transition: color 0.2s;
+}
+
+.card-desc {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.4;
+}
+
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.info-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.35);
+  min-width: 40px;
+}
+
+.slots-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.slots-bar {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.slots-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c6f135, #4ade80);
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+
+.slots-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+.slots-available {
+  color: #c6f135;
+  font-weight: 600;
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.role-badge {
+  padding: 0.375rem 1rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.role-organizer {
+  background: rgba(198, 241, 53, 0.12);
+  border: 1px solid rgba(198, 241, 53, 0.3);
+  color: #c6f135;
+}
+
+.role-participant {
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  color: #4ade80;
+}
+
+.btn-cancel, .btn-leave {
+  padding: 0.5rem 1.5rem;
+  border-radius: 50px;
+  border: 1px solid rgba(220, 38, 38, 0.5);
+  background: transparent;
+  color: #f87171;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(220, 38, 38, 0.15);
+    border-color: #f87171;
+  }
+}
+
+.btn-leave {
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fbbf24;
+
+  &:hover {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: #fbbf24;
+  }
+}
+
+.btn-action {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  border-radius: 50px;
+  background: #c6f135;
+  color: #0a0f1a;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  margin-top: 1rem;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #d4f75a;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 5rem 2rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.empty-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.empty-desc {
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    padding: 2rem 1rem 1rem;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+  }
+
+  .content-area {
+    padding: 0 1rem 3rem;
+  }
+
+  .tabs-container {
+    width: 100%;
+  }
+
+  .tab-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .matches-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 1.5rem;
+  }
+
+  .match-card {
+    padding: 1.25rem;
+  }
+}

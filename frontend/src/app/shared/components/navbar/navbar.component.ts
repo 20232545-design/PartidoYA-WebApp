@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, DoCheck, ElementRef, HostListener, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-import { NotificationService } from '../../services/notification.service';
+import { AuthService } from '@core/auth/auth.service';
+import { NotificationService } from '@features/notifications/application/notification.service';
 
 @Component({
   selector: 'app-navbar',

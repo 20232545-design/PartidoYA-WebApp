@@ -1,0 +1,380 @@
+<div class="ticker-strip">
+  <div class="ticker-track">
+    @for (item of tickerItems; track item) {
+      <span class="ticker-item">{{ item }}</span>
+      <span class="ticker-dot"></span>
+    }
+    @for (item of tickerItems; track item) {
+      <span class="ticker-item">{{ item }}</span>
+      <span class="ticker-dot"></span>
+    }
+  </div>
+</div>
+
+<section class="dashboard">
+  <div class="container">
+
+    <div class="welcome">
+      <div class="intro-copy">
+        <span class="intro-eyebrow">Panel deportivo</span>
+        <h1>{{ userName ? 'Hola, ' + userName : 'Hola' }}</h1>
+        <p>
+          {{ isLoggedIn
+            ? 'Organiza tus partidos, revisa cupos disponibles y encuentra una pichanga cerca de ti.'
+            : 'Mira partidos, deportes y canchas disponibles. Inicia sesión cuando quieras unirte o crear una pichanga.' }}
+        </p>
+      </div>
+      <div class="intro-actions">
+        <a routerLink="/deportes" class="intro-btn intro-btn-primary">Explorar deportes</a>
+        @if (isLoggedIn) {
+          <a routerLink="/mis-partidos" class="intro-btn intro-btn-secondary">Mis partidos</a>
+        } @else {
+          <a routerLink="/login" class="intro-btn intro-btn-secondary">Iniciar sesión</a>
+        }
+      </div>
+    </div>
+
+    <div class="banner-carousel" (mouseenter)="stopAutoplay()" (mouseleave)="startAutoplay()">
+      @for (banner of banners; track banner.title; let i = $index) {
+        <div class="banner-slide" [ngClass]="[banner.theme, i === currentBanner ? 'active' : '']">
+          <div class="banner-content">
+            <h2 class="banner-title">{{ banner.title }}</h2>
+            <p class="banner-subtitle">{{ banner.subtitle }}</p>
+            <a routerLink="/deportes" class="btn-banner">{{ banner.cta }}</a>
+          </div>
+        </div>
+      }
+      <button class="carousel-arrow arrow-left" (click)="prevBanner(); startAutoplay()">&#10094;</button>
+      <button class="carousel-arrow arrow-right" (click)="nextBanner(); startAutoplay()">&#10095;</button>
+      <div class="banner-dots">
+        @for (banner of banners; track banner.title; let i = $index) {
+          <button class="banner-dot" [class.active]="i === currentBanner" (click)="goToBanner(i)"></button>
+        }
+      </div>
+    </div>
+
+    @if (canManageCourts) {
+      <div class="dashboard-summary admin-summary">
+        <a routerLink="/admin-canchas" class="summary-card summary-accent">
+          <span class="summary-value">+</span>
+          <span class="summary-label">Administrar canchas</span>
+          <p>Crea, edita y publica espacios disponibles para reservas.</p>
+        </a>
+        <a routerLink="/admin-canchas" class="summary-card">
+          <span class="summary-value">S/</span>
+          <span class="summary-label">Precios y horarios</span>
+          <p>Mantén tus turnos, servicios e información actualizada.</p>
+        </a>
+        <a routerLink="/mi-perfil" class="summary-card">
+          <span class="summary-value">OK</span>
+          <span class="summary-label">Plan de cancha</span>
+          <p>Tu dashboard está enfocado en gestionar reservas y visibilidad.</p>
+        </a>
+      </div>
+
+      <div class="quick-guide">
+        <div class="quick-guide-copy">
+          <span>Gestiona aquí</span>
+          <h2>Publica tus canchas y mantén tus horarios listos</h2>
+        </div>
+        <div class="quick-guide-steps">
+          <div><strong>1</strong><span>Registra cancha</span></div>
+          <div><strong>2</strong><span>Publica horarios</span></div>
+          <div><strong>3</strong><span>Recibe reservas</span></div>
+        </div>
+      </div>
+    } @else {
+    <div class="dashboard-summary">
+      <a routerLink="/deportes" class="summary-card">
+        <span class="summary-value">{{ openMatchesCount }}</span>
+        <span class="summary-label">Partidos abiertos</span>
+        <p>Encuentra una pichanga disponible para hoy o los próximos días.</p>
+      </a>
+      <a routerLink="/deportes" class="summary-card summary-accent">
+        <span class="summary-value">{{ almostFullCount }}</span>
+        <span class="summary-label">Últimos cupos</span>
+        <p>Revisa partidos que están por completarse y entra antes de que cierren.</p>
+      </a>
+      <a routerLink="/mis-partidos" class="summary-card">
+        <span class="summary-value">{{ joinedMatches.length }}</span>
+        <span class="summary-label">Tus partidos</span>
+        <p>{{ isLoggedIn ? 'Ten a la mano tus próximas jugadas.' : 'Inicia sesión para guardar y seguir tus partidos.' }}</p>
+      </a>
+    </div>
+
+    <div class="quick-guide">
+      <div class="quick-guide-copy">
+        <span>Empieza aquí</span>
+        <h2>Encuentra tu siguiente partido sin perder tiempo</h2>
+      </div>
+      <div class="quick-guide-steps">
+        <div><strong>1</strong><span>Elige deporte</span></div>
+        <div><strong>2</strong><span>Revisa cupos</span></div>
+        <div><strong>3</strong><span>Únete o crea</span></div>
+      </div>
+    </div>
+
+    }
+
+    @if (canUsePlayerFeatures) {
+    <div class="section-header dashboard-section-title">
+      <div>
+        <span class="section-kicker">Deportes</span>
+        <h2>Elige cómo quieres jugar</h2>
+      </div>
+      <a routerLink="/deportes" class="section-link">Ver todos</a>
+    </div>
+
+    <div class="sport-cards">
+      <a routerLink="/deportes" [queryParams]="{sport: 'Fútbol'}" class="sport-card sport-futbol">
+        <div class="sport-card-overlay"></div>
+        <div class="sport-card-content">
+          <span class="sport-card-name">Fútbol</span>
+        </div>
+      </a>
+      <a routerLink="/deportes" [queryParams]="{sport: 'Básquet'}" class="sport-card sport-basket">
+        <div class="sport-card-overlay"></div>
+        <div class="sport-card-content">
+          <span class="sport-card-name">Básquet</span>
+        </div>
+      </a>
+      <a routerLink="/deportes" [queryParams]="{sport: 'Voleibol'}" class="sport-card sport-voley">
+        <div class="sport-card-overlay"></div>
+        <div class="sport-card-content">
+          <span class="sport-card-name">Voleibol</span>
+        </div>
+      </a>
+      <a routerLink="/deportes" [queryParams]="{sport: 'Tenis'}" class="sport-card sport-tenis">
+        <div class="sport-card-overlay"></div>
+        <div class="sport-card-content">
+          <span class="sport-card-name">Tenis</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="section-header dashboard-section-title">
+      <div>
+        <span class="section-kicker">Resumen</span>
+        <h2>Lo más útil para hoy</h2>
+      </div>
+    </div>
+
+    <div class="featured-row">
+      @if (upcomingMatches.length > 0) {
+        <div class="featured-card featured-main">
+          <div class="featured-tag">Próxima pichanga</div>
+          <h3 class="featured-title">{{ upcomingMatches[0].title }}</h3>
+          <div class="featured-meta">
+            <span class="featured-sport">{{ upcomingMatches[0].sport }}</span>
+            <span>{{ formatDate(upcomingMatches[0].matchDate) }}</span>
+            @if (upcomingMatches[0].price !== null) {
+              <span>S/ {{ upcomingMatches[0].price | number:'1.2-2' }}</span>
+            }
+          </div>
+          <p class="featured-location">{{ upcomingMatches[0].address }}</p>
+          <div class="featured-bottom">
+            <div class="featured-slots">
+              <div class="featured-bar">
+                <div class="featured-fill" [style.width.%]="getFilledPercent(upcomingMatches[0])"></div>
+              </div>
+              <span>{{ upcomingMatches[0].totalSlots - upcomingMatches[0].availableSlots }}/{{ upcomingMatches[0].totalSlots }} jugadores</span>
+            </div>
+            @if (!hasJoined(upcomingMatches[0]) && upcomingMatches[0].availableSlots > 0) {
+              <button class="btn-featured" (click)="joinMatch(upcomingMatches[0].id)">Unirme</button>
+            }
+            @if (hasJoined(upcomingMatches[0])) {
+              <span class="badge-featured">Inscrito</span>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="featured-card featured-main featured-empty">
+          <div class="featured-tag">Sin pichangas</div>
+          <h3 class="featured-title">Aún no hay partidos</h3>
+          <p class="featured-location">Crea el primero y arma tu equipo</p>
+        </div>
+      }
+
+      <a routerLink="/deportes" class="featured-card featured-cta">
+        <div class="cta-icon">+</div>
+        <h3 class="cta-title">Crea tu pichanga</h3>
+        <p class="cta-desc">Organiza un partido y convoca jugadores</p>
+      </a>
+
+      @if (almostFullMatches.length > 0) {
+        <div class="featured-card featured-urgent">
+          <div class="featured-tag tag-urgent">Últimos cupos</div>
+          <h3 class="featured-title">{{ almostFullMatches[0].title }}</h3>
+          <div class="featured-meta">
+            <span class="featured-sport">{{ almostFullMatches[0].sport }}</span>
+            <span>{{ formatDate(almostFullMatches[0].matchDate) }}</span>
+            @if (almostFullMatches[0].price !== null) {
+              <span>S/ {{ almostFullMatches[0].price | number:'1.2-2' }}</span>
+            }
+          </div>
+          <div class="featured-bottom">
+            <span class="urgent-count">{{ almostFullMatches[0].availableSlots }} cupo{{ almostFullMatches[0].availableSlots > 1 ? 's' : '' }}</span>
+            @if (!hasJoined(almostFullMatches[0]) && almostFullMatches[0].availableSlots > 0) {
+              <button class="btn-featured btn-urgent" (click)="joinMatch(almostFullMatches[0].id)">Unirme</button>
+            }
+            @if (hasJoined(almostFullMatches[0])) {
+              <span class="badge-featured">Inscrito</span>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="featured-card player-card">
+          <div class="player-card-header">
+            <div class="player-rank">
+              <span class="rank-label">Nivel</span>
+              <span class="rank-value">Amateur</span>
+            </div>
+          </div>
+          <div class="player-stats">
+            <div class="p-stat">
+              <span class="p-stat-num">0</span>
+              <span class="p-stat-label">Jugadas</span>
+            </div>
+            <div class="p-stat-divider"></div>
+            <div class="p-stat">
+              <span class="p-stat-num">0</span>
+              <span class="p-stat-label">Racha</span>
+            </div>
+          </div>
+          <div class="player-xp">
+            <div class="xp-bar"><div class="xp-fill"></div></div>
+            <span class="xp-label">0 / 10 pichangas para subir</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (!isLoggedIn) {
+      <div class="guest-card">
+        <div>
+          <span class="guest-kicker">Cuenta gratuita</span>
+          <h2>Guarda tus partidos y únete con un clic</h2>
+          <p>Crea tu cuenta para inscribirte, ver tus partidos y recibir una experiencia más personalizada.</p>
+        </div>
+        <a routerLink="/login" class="guest-link">Crear cuenta o iniciar sesión</a>
+      </div>
+    }
+
+    <div class="section">
+      <div class="section-header">
+        <h2>Buscar por distrito o dirección</h2>
+      </div>
+      <div class="manual-search-box">
+        <input
+          type="text"
+          [(ngModel)]="manualSearchQuery"
+          (ngModelChange)="searchByAddress()"
+          placeholder="Ej: Surquillo, Av. Angamos..."
+          class="manual-search-input">
+      </div>
+      @if (manualSearchQuery.trim() && manualSearchResults.length === 0) {
+        <p class="manual-search-empty">No hay partidos que coincidan con "{{ manualSearchQuery }}".</p>
+      }
+      @if (manualSearchResults.length > 0) {
+        <div class="scroll-row">
+          @for (match of manualSearchResults; track match.id) {
+            <a [routerLink]="['/partidos', match.id]" class="mini-card">
+              <div class="mini-card-img mini-{{ match.sport.toLowerCase() }}">
+                <div class="mini-card-overlay"></div>
+                <span class="mini-sport">{{ match.sport }}</span>
+              </div>
+              <div class="mini-card-body">
+                <span class="mini-title">{{ match.title }}</span>
+                <span class="mini-meta">{{ formatDate(match.matchDate) }}</span>
+                @if (match.price !== null) {
+                  <span class="mini-meta">S/ {{ match.price | number:'1.2-2' }}</span>
+                }
+                <div class="mini-bottom">
+                  <span class="mini-slots">{{ match.totalSlots - match.availableSlots }}/{{ match.totalSlots }}</span>
+                  @if (!hasJoined(match) && match.availableSlots > 0) {
+                    <button class="btn-mini" (click)="$event.preventDefault(); $event.stopPropagation(); joinMatch(match.id)">Unirme</button>
+                  }
+                  @if (hasJoined(match)) {
+                    <span class="badge-mini">Inscrito</span>
+                  }
+                </div>
+              </div>
+            </a>
+          }
+        </div>
+      }
+    </div>
+
+    @if (nearbyMatches.length > 0) {
+      <div class="section">
+        <div class="section-header">
+          <h2>Cerca de ti</h2>
+          <a routerLink="/deportes" class="section-link">Ver todos</a>
+        </div>
+        <div class="scroll-row">
+          @for (match of nearbyMatches; track match.id) {
+            <a [routerLink]="['/partidos', match.id]" class="mini-card">
+              <div class="mini-card-img mini-{{ match.sport.toLowerCase() }}">
+                <div class="mini-card-overlay"></div>
+                <span class="mini-sport">{{ match.sport }}</span>
+              </div>
+              <div class="mini-card-body">
+                <span class="mini-title">{{ match.title }}</span>
+                <span class="mini-meta">{{ formatDate(match.matchDate) }}</span>
+                @if (match.price !== null) {
+                  <span class="mini-meta">S/ {{ match.price | number:'1.2-2' }}</span>
+                }
+                <div class="mini-bottom">
+                  <span class="mini-slots">{{ match.totalSlots - match.availableSlots }}/{{ match.totalSlots }}</span>
+                  @if (!hasJoined(match) && match.availableSlots > 0) {
+                    <button class="btn-mini" (click)="$event.preventDefault(); $event.stopPropagation(); joinMatch(match.id)">Unirme</button>
+                  }
+                  @if (hasJoined(match)) {
+                    <span class="badge-mini">Inscrito</span>
+                  }
+                </div>
+              </div>
+            </a>
+          }
+        </div>
+      </div>
+    }
+
+    @if (joinedMatches.length > 0) {
+      <div class="section">
+        <div class="section-header">
+          <h2>Tus partidos</h2>
+          <a routerLink="/mis-partidos" class="section-link">Ver todos</a>
+        </div>
+        <div class="scroll-row">
+          @for (match of joinedMatches; track match.id) {
+            <a [routerLink]="['/partidos', match.id]" class="mini-card">
+              <div class="mini-card-img mini-{{ match.sport.toLowerCase() }}">
+                <div class="mini-card-overlay"></div>
+                <span class="mini-sport">{{ match.sport }}</span>
+              </div>
+              <div class="mini-card-body">
+                <span class="mini-title">{{ match.title }}</span>
+                <span class="mini-meta">{{ formatDate(match.matchDate) }}</span>
+                @if (match.price !== null) {
+                  <span class="mini-meta">S/ {{ match.price | number:'1.2-2' }}</span>
+                }
+                <div class="mini-bottom">
+                  <span class="mini-slots">{{ match.totalSlots - match.availableSlots }}/{{ match.totalSlots }}</span>
+                  @if (!hasJoined(match) && match.availableSlots > 0) {
+                    <button class="btn-mini" (click)="$event.preventDefault(); $event.stopPropagation(); joinMatch(match.id)">Unirme</button>
+                  }
+                  @if (hasJoined(match)) {
+                    <span class="badge-mini">Inscrito</span>
+                  }
+                </div>
+              </div>
+            </a>
+          }
+        </div>
+      </div>
+    }
+    }
+
+  </div>
+</section>
