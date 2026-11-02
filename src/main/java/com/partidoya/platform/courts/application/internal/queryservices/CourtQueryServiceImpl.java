@@ -2,9 +2,7 @@ package com.partidoya.platform.courts.application.internal.queryservices;
 
 import com.partidoya.platform.courts.application.queryservices.CourtQueryService;
 import com.partidoya.platform.courts.application.queryservices.CourtAvailabilityView;
-import com.partidoya.platform.courts.application.queryservices.CourtRankingView;
 import com.partidoya.platform.courts.application.queryservices.CourtReportView;
-import com.partidoya.platform.courts.application.queryservices.DailyIncomeView;
 import com.partidoya.platform.courts.application.queryservices.ManagedReservationView;
 import com.partidoya.platform.courts.domain.model.aggregates.Court;
 import com.partidoya.platform.courts.domain.model.aggregates.CourtAvailability;
@@ -19,7 +17,6 @@ import com.partidoya.platform.courts.domain.model.valueobjects.CourtAvailability
 import com.partidoya.platform.courts.domain.repositories.CourtRepository;
 import com.partidoya.platform.courts.domain.repositories.CourtAvailabilityRepository;
 import com.partidoya.platform.courts.domain.repositories.ReservationRepository;
-import com.partidoya.platform.courts.domain.model.valueobjects.PaymentStatus;
 import com.partidoya.platform.courts.domain.model.valueobjects.ReservationStatus;
 import com.partidoya.platform.iam.domain.repositories.UserRepository;
 import com.partidoya.platform.iam.domain.services.PlanPolicy;
@@ -28,13 +25,9 @@ import com.partidoya.platform.shared.domain.exceptions.ResourceNotFoundException
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -48,14 +41,17 @@ public class CourtQueryServiceImpl implements CourtQueryService {
     private final CourtAvailabilityRepository availabilityRepository;
     private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
+    private final CourtReportCalculator courtReportCalculator;
 
     public CourtQueryServiceImpl(CourtRepository courtRepository, CourtAvailabilityRepository availabilityRepository,
                                  ReservationRepository reservationRepository,
-                                 UserRepository userRepository) {
+                                 UserRepository userRepository,
+                                 CourtReportCalculator courtReportCalculator) {
         this.courtRepository = courtRepository;
         this.availabilityRepository = availabilityRepository;
         this.reservationRepository = reservationRepository;
         this.userRepository = userRepository;
+        this.courtReportCalculator = courtReportCalculator;
     }
 
     @Override
@@ -163,51 +159,11 @@ public class CourtQueryServiceImpl implements CourtQueryService {
         var courts = managedCourts(query.ownerId(), query.courtId());
         var range = dateRange(query.from(), query.to());
         if (courts.isEmpty()) {
-            return new CourtReportView(range.from(), range.to(), BigDecimal.ZERO, 0, 0, 0, BigDecimal.ZERO,
-                    List.of(), null, List.of());
+            return courtReportCalculator.calculate(courts, List.of(), range.from(), range.to());
         }
         var reservations = reservationRepository.findByCourtIds(courts.stream().map(Court::getId).toList(),
                 range.from(), range.to());
-        var confirmed = reservations.stream()
-                .filter(reservation -> reservation.getStatus() == ReservationStatus.CONFIRMED
-                        && reservation.getPaymentStatus() == PaymentStatus.APPROVED)
-                .toList();
-        var canceled = reservations.stream()
-                .filter(reservation -> reservation.getStatus() == ReservationStatus.CANCELLED
-                        || reservation.getPaymentStatus() == PaymentStatus.REJECTED
-                        || reservation.getPaymentStatus() == PaymentStatus.REFUNDED)
-                .count();
-        var totalIncome = confirmed.stream()
-                .map(reservation -> reservation.getPrice() == null ? BigDecimal.ZERO : reservation.getPrice())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        var averageTicket = confirmed.isEmpty() ? BigDecimal.ZERO :
-                totalIncome.divide(BigDecimal.valueOf(confirmed.size()), 2, RoundingMode.HALF_UP);
-        var possibleSlots = possibleSlots(courts, range.from(), range.to());
-        var occupancy = possibleSlots == 0 ? 0 : (confirmed.size() * 100.0) / possibleSlots;
-        var daily = range.from().datesUntil(range.to().plusDays(1))
-                .map(date -> {
-                    var dayReservations = confirmed.stream().filter(reservation -> reservation.getDate().equals(date)).toList();
-                    var income = dayReservations.stream()
-                            .map(reservation -> reservation.getPrice() == null ? BigDecimal.ZERO : reservation.getPrice())
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    return new DailyIncomeView(date, income, dayReservations.size());
-                })
-                .toList();
-        Map<Long, Court> courtsById = courts.stream()
-                .collect(Collectors.toMap(court -> court.getId().value(), Function.identity()));
-        var ranking = confirmed.stream()
-                .collect(Collectors.groupingBy(reservation -> reservation.getCourtId().value(), Collectors.counting()))
-                .entrySet().stream()
-                .map(entry -> {
-                    var court = courtsById.get(entry.getKey());
-                    var percentage = confirmed.isEmpty() ? 0 : (entry.getValue() * 100.0) / confirmed.size();
-                    return new CourtRankingView(entry.getKey(), court == null ? "Cancha #" + entry.getKey() : court.getName(),
-                            entry.getValue(), percentage);
-                })
-                .sorted(Comparator.comparingLong(CourtRankingView::reservations).reversed())
-                .toList();
-        return new CourtReportView(range.from(), range.to(), totalIncome, confirmed.size(), canceled, occupancy,
-                averageTicket, daily, ranking.isEmpty() ? null : ranking.get(0), ranking);
+        return courtReportCalculator.calculate(courts, reservations, range.from(), range.to());
     }
 
     private List<Court> managedCourts(com.partidoya.platform.iam.domain.model.valueobjects.UserId ownerId,
@@ -275,11 +231,6 @@ public class CourtQueryServiceImpl implements CourtQueryService {
     private static ScheduleRange scheduleRange(String schedule) {
         var parts = schedule.split("-");
         return new ScheduleRange(LocalTime.parse(parts[0]), LocalTime.parse(parts[1]));
-    }
-
-    private static long possibleSlots(List<Court> courts, LocalDate from, LocalDate to) {
-        var days = ChronoUnit.DAYS.between(from, to) + 1;
-        return courts.stream().mapToLong(court -> (long) court.getSchedules().size() * days).sum();
     }
 
     private record DateRange(LocalDate from, LocalDate to) {

@@ -9,6 +9,5 @@ import org.springframework.test.context.ActiveProfiles;
 class DatabaseMigrationIntegrationTest {
     @Test
     void createsAndValidatesTheCompleteSchema() {
-        // Starting the application context runs Flyway and Hibernate schema validation.
     }
 }

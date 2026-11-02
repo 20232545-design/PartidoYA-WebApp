@@ -1,0 +1,48 @@
+package com.partidoya.platform.courts.interfaces.rest;
+
+import com.partidoya.platform.courts.application.commandservices.CourtCommandService;
+import com.partidoya.platform.courts.domain.model.commands.ReserveCourtCommand;
+import com.partidoya.platform.courts.domain.model.valueobjects.CourtId;
+import com.partidoya.platform.courts.interfaces.rest.resources.ReservationResource;
+import com.partidoya.platform.courts.interfaces.rest.resources.ReserveCourtResource;
+import com.partidoya.platform.courts.interfaces.rest.transform.ReservationResourceFromEntityAssembler;
+import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+
+@RestController
+@RequestMapping(value = "/api/v1/courts", produces = APPLICATION_JSON_VALUE)
+@Tag(name = "Court Reservations", description = "Court reservation endpoints")
+public class CourtReservationsController {
+    private final CourtCommandService courtCommandService;
+
+    public CourtReservationsController(CourtCommandService courtCommandService) {
+        this.courtCommandService = courtCommandService;
+    }
+
+    @PostMapping("/{courtId}/reservations")
+    public ResponseEntity<ReservationResource> reserveCourt(
+            @PathVariable Long courtId,
+            @RequestBody ReserveCourtResource resource) {
+        var reservation = courtCommandService.handle(new ReserveCourtCommand(
+                new CourtId(courtId),
+                new UserId(resource.userId()),
+                resource.date(),
+                resource.startTime(),
+                resource.endTime(),
+                resource.paymentMethod(),
+                resource.culqiToken(),
+                resource.payerEmail(),
+                resource.idempotencyKey()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ReservationResourceFromEntityAssembler.toResourceFromEntity(reservation));
+    }
+}
