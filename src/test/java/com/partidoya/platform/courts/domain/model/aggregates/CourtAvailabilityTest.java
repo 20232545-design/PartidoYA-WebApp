@@ -1,7 +1,7 @@
-package com.partidoya.platform.courts.domain.model.aggregates;
+package com.partidoya.platform.courts.models;
 
-import com.partidoya.platform.courts.domain.model.valueobjects.CourtAvailabilityType;
-import com.partidoya.platform.courts.domain.model.valueobjects.CourtId;
+import com.partidoya.platform.courts.models.CourtAvailabilityType;
+import com.partidoya.platform.courts.models.CourtId;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;

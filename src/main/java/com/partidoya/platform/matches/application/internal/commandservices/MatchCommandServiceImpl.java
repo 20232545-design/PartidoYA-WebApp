@@ -2,8 +2,8 @@ package com.partidoya.platform.matches.application.internal.commandservices;
 
 import com.partidoya.platform.iam.domain.repositories.UserRepository;
 import com.partidoya.platform.iam.domain.services.PlanPolicy;
-import com.partidoya.platform.courts.domain.model.valueobjects.ReservationId;
-import com.partidoya.platform.courts.domain.repositories.ReservationRepository;
+import com.partidoya.platform.courts.models.ReservationId;
+import com.partidoya.platform.courts.repositories.ReservationRepository;
 import com.partidoya.platform.matches.application.commandservices.MatchCommandService;
 import com.partidoya.platform.matches.domain.model.aggregates.Match;
 import com.partidoya.platform.matches.domain.model.commands.CancelMatchCommand;

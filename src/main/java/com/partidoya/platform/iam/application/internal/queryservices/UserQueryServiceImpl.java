@@ -14,7 +14,7 @@ import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
 import com.partidoya.platform.iam.domain.repositories.UserAdministrativeActionRepository;
 import com.partidoya.platform.iam.domain.repositories.UserRepository;
 import com.partidoya.platform.iam.domain.services.PlanPolicy;
-import com.partidoya.platform.courts.domain.repositories.ReservationRepository;
+import com.partidoya.platform.courts.repositories.ReservationRepository;
 import com.partidoya.platform.matches.domain.repositories.MatchRepository;
 import com.partidoya.platform.shared.domain.exceptions.ForbiddenActionException;
 import com.partidoya.platform.shared.domain.exceptions.ResourceNotFoundException;
