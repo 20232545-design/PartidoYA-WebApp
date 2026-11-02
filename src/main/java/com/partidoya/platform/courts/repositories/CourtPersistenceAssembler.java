@@ -3,7 +3,7 @@ package com.partidoya.platform.courts.repositories;
 import com.partidoya.platform.courts.models.Court;
 import com.partidoya.platform.courts.models.CourtId;
 import com.partidoya.platform.courts.repositories.CourtPersistenceEntity;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 
 import java.util.ArrayList;
 

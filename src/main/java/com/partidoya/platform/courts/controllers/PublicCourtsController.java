@@ -5,7 +5,7 @@ import com.partidoya.platform.courts.dto.CourtResource;
 import com.partidoya.platform.courts.dto.CourtResourceFromEntityAssembler;
 import com.partidoya.platform.courts.services.CourtAvailabilityService;
 import com.partidoya.platform.courts.services.CourtSearchService;
-import com.partidoya.platform.shared.domain.exceptions.ResourceNotFoundException;
+import com.partidoya.platform.shared.exceptions.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;

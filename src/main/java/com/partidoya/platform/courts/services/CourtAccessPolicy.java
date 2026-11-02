@@ -3,11 +3,11 @@ package com.partidoya.platform.courts.services;
 import com.partidoya.platform.courts.models.Court;
 import com.partidoya.platform.courts.models.CourtId;
 import com.partidoya.platform.courts.repositories.CourtRepository;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
-import com.partidoya.platform.iam.domain.repositories.UserRepository;
-import com.partidoya.platform.iam.domain.services.PlanPolicy;
-import com.partidoya.platform.shared.domain.exceptions.ForbiddenActionException;
-import com.partidoya.platform.shared.domain.exceptions.ResourceNotFoundException;
+import com.partidoya.platform.users.models.UserId;
+import com.partidoya.platform.users.repositories.UserRepository;
+import com.partidoya.platform.users.services.PlanPolicy;
+import com.partidoya.platform.shared.exceptions.ForbiddenActionException;
+import com.partidoya.platform.shared.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

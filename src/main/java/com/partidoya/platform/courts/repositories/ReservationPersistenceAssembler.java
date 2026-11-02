@@ -6,7 +6,7 @@ import com.partidoya.platform.courts.models.PaymentStatus;
 import com.partidoya.platform.courts.models.ReservationId;
 import com.partidoya.platform.courts.models.ReservationStatus;
 import com.partidoya.platform.courts.repositories.ReservationPersistenceEntity;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 
 public final class ReservationPersistenceAssembler {
     private ReservationPersistenceAssembler() {

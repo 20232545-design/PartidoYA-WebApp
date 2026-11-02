@@ -21,7 +21,7 @@ import com.partidoya.platform.courts.services.CourtAvailabilityService;
 import com.partidoya.platform.courts.services.CourtManagementService;
 import com.partidoya.platform.courts.services.CourtReportService;
 import com.partidoya.platform.courts.services.CourtReservationService;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;

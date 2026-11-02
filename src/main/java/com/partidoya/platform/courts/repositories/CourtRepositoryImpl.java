@@ -5,7 +5,7 @@ import com.partidoya.platform.courts.models.CourtId;
 import com.partidoya.platform.courts.repositories.CourtRepository;
 import com.partidoya.platform.courts.repositories.CourtPersistenceAssembler;
 import com.partidoya.platform.courts.repositories.CourtPersistenceRepository;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 

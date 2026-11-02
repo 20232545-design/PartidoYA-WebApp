@@ -1,7 +1,7 @@
 package com.partidoya.platform.courts.services;
 
 import com.partidoya.platform.courts.models.CourtId;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

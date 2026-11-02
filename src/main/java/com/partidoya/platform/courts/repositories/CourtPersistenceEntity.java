@@ -1,6 +1,6 @@
 package com.partidoya.platform.courts.repositories;
 
-import com.partidoya.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
+import com.partidoya.platform.shared.models.AuditableAbstractPersistenceEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;

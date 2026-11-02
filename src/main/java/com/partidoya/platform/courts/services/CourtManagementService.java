@@ -3,7 +3,7 @@ package com.partidoya.platform.courts.services;
 import com.partidoya.platform.courts.models.Court;
 import com.partidoya.platform.courts.models.CourtId;
 import com.partidoya.platform.courts.repositories.CourtRepository;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

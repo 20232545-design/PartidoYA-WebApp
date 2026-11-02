@@ -6,7 +6,7 @@ import com.partidoya.platform.courts.dto.ReserveCourtResource;
 import com.partidoya.platform.courts.dto.ReservationResourceFromEntityAssembler;
 import com.partidoya.platform.courts.services.CourtReservationRequest;
 import com.partidoya.platform.courts.services.CourtReservationService;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

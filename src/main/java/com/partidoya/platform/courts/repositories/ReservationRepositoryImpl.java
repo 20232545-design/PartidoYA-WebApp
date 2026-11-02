@@ -6,7 +6,7 @@ import com.partidoya.platform.courts.models.ReservationId;
 import com.partidoya.platform.courts.repositories.ReservationRepository;
 import com.partidoya.platform.courts.repositories.ReservationPersistenceAssembler;
 import com.partidoya.platform.courts.repositories.ReservationPersistenceRepository;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;

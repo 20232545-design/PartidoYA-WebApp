@@ -9,12 +9,12 @@ import com.partidoya.platform.courts.repositories.CourtAvailabilityRepository;
 import com.partidoya.platform.courts.repositories.ReservationRepository;
 import com.partidoya.platform.courts.payments.PaymentProcessor;
 import com.partidoya.platform.courts.payments.PaymentRequest;
-import com.partidoya.platform.iam.domain.repositories.UserRepository;
-import com.partidoya.platform.iam.domain.services.PlanPolicy;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
-import com.partidoya.platform.shared.domain.exceptions.ForbiddenActionException;
-import com.partidoya.platform.shared.domain.exceptions.ResourceConflictException;
-import com.partidoya.platform.shared.domain.exceptions.ResourceNotFoundException;
+import com.partidoya.platform.users.repositories.UserRepository;
+import com.partidoya.platform.users.services.PlanPolicy;
+import com.partidoya.platform.users.models.UserId;
+import com.partidoya.platform.shared.exceptions.ForbiddenActionException;
+import com.partidoya.platform.shared.exceptions.ResourceConflictException;
+import com.partidoya.platform.shared.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

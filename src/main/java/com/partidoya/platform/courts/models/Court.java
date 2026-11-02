@@ -1,7 +1,7 @@
 package com.partidoya.platform.courts.models;
 
 import com.partidoya.platform.courts.models.CourtId;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 import lombok.Getter;
 
 import java.math.BigDecimal;

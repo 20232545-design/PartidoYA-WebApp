@@ -9,7 +9,7 @@ import com.partidoya.platform.courts.models.CourtId;
 import com.partidoya.platform.courts.models.PaymentStatus;
 import com.partidoya.platform.courts.models.ReservationStatus;
 import com.partidoya.platform.courts.repositories.ReservationRepository;
-import com.partidoya.platform.iam.domain.model.valueobjects.UserId;
+import com.partidoya.platform.users.models.UserId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
