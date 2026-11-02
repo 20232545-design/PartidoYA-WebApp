@@ -16,6 +16,8 @@ Cada contexto sigue capas `domain → application → infrastructure → interfa
 
 Frontend en Angular (standalone components), consumiendo la API REST vía HTTPS/JSON.
 
+La estructura detallada, los límites de dependencia y la comparación con la arquitectura anterior están en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). El inventario de rutas, endpoints e integraciones está en [`docs/FUNCTIONAL_INVENTORY.md`](docs/FUNCTIONAL_INVENTORY.md).
+
 ## Tech stack
 
 **Backend**
@@ -59,10 +61,22 @@ mvn spring-boot:run
 ```bash
 cd frontend
 npm install
-ng serve
+npm start
 ```
 
 - App: `http://localhost:4200`
+
+## Validación
+
+```bash
+mvn test
+cd frontend
+npm ci
+npm test
+npm run build
+```
+
+Los resultados y limitaciones verificadas están en [`docs/VALIDATION.md`](docs/VALIDATION.md).
 
 ## Despliegue con Aiven y Render
 
