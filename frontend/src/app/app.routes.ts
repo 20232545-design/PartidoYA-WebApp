@@ -1,16 +1,16 @@
 import { Routes } from '@angular/router';
-import { accessRoutes } from '@features/access/access.routes';
-import { administrationRoutes } from '@features/administration/administration.routes';
-import { courtRoutes } from '@features/courts/court.routes';
-import { dashboardRoutes } from '@features/dashboard/dashboard.routes';
-import { marketingRoutes } from '@features/marketing/marketing.routes';
-import { matchRoutes } from '@features/matches/match.routes';
-import { notificationRoutes } from '@features/notifications/notification.routes';
-import { profileRoutes } from '@features/profile/profile.routes';
+import { authRoutes } from '@app/auth/auth.routes';
+import { administrationRoutes } from '@app/administration/administration.routes';
+import { courtRoutes } from '@app/courts/courts.routes';
+import { dashboardRoutes } from '@app/dashboard/dashboard.routes';
+import { marketingRoutes } from '@app/marketing/marketing.routes';
+import { matchRoutes } from '@app/matches/matches.routes';
+import { notificationRoutes } from '@app/notifications/notification.routes';
+import { profileRoutes } from '@app/profiles/profiles.routes';
 
 export const routes: Routes = [
   ...marketingRoutes,
-  ...accessRoutes,
+  ...authRoutes,
   ...dashboardRoutes,
   ...matchRoutes,
   ...courtRoutes,
