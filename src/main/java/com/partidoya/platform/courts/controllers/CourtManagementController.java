@@ -22,6 +22,7 @@ import com.partidoya.platform.courts.services.CourtManagementService;
 import com.partidoya.platform.courts.services.CourtReportService;
 import com.partidoya.platform.courts.services.CourtReservationService;
 import com.partidoya.platform.users.models.UserId;
+import com.partidoya.platform.auth.security.CurrentUserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -49,21 +50,24 @@ public class CourtManagementController {
     private final CourtAvailabilityService availabilityService;
     private final CourtReservationService reservationService;
     private final CourtReportService reportService;
+    private final CurrentUserService currentUserService;
 
     public CourtManagementController(
             CourtManagementService managementService,
             CourtAvailabilityService availabilityService,
             CourtReservationService reservationService,
-            CourtReportService reportService) {
+            CourtReportService reportService,
+            CurrentUserService currentUserService) {
         this.managementService = managementService;
         this.availabilityService = availabilityService;
         this.reservationService = reservationService;
         this.reportService = reportService;
+        this.currentUserService = currentUserService;
     }
 
     @GetMapping("/managed/{ownerId}")
     public ResponseEntity<List<CourtResource>> getManagedCourts(@PathVariable Long ownerId) {
-        var courts = managementService.listManagedCourts(new UserId(ownerId));
+        var courts = managementService.listManagedCourts(currentUserService.requireSelf(ownerId));
         return ResponseEntity.ok(courts.stream()
                 .map(CourtResourceFromEntityAssembler::toResourceFromEntity)
                 .toList());
@@ -76,7 +80,7 @@ public class CourtManagementController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         var reservations = reservationService.listManaged(
-                new UserId(ownerId),
+                currentUserService.requireSelf(ownerId),
                 courtId == null ? null : new CourtId(courtId),
                 from,
                 to);
@@ -92,7 +96,7 @@ public class CourtManagementController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         var availability = availabilityService.listManaged(
-                new UserId(ownerId),
+                currentUserService.requireSelf(ownerId),
                 courtId == null ? null : new CourtId(courtId),
                 from,
                 to);
@@ -105,7 +109,7 @@ public class CourtManagementController {
     public ResponseEntity<CourtAvailabilityResource> createAvailability(
             @PathVariable Long ownerId,
             @RequestBody SaveCourtAvailabilityResource resource) {
-        var userId = new UserId(ownerId);
+        var userId = currentUserService.requireSelf(ownerId);
         var availability = availabilityService.create(userId, availabilityInput(resource));
         var view = availabilityService.findManagedView(userId, availability);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -117,7 +121,7 @@ public class CourtManagementController {
             @PathVariable Long ownerId,
             @PathVariable Long availabilityId,
             @RequestBody SaveCourtAvailabilityResource resource) {
-        var userId = new UserId(ownerId);
+        var userId = currentUserService.requireSelf(ownerId);
         var availability = availabilityService.update(
                 userId,
                 new CourtAvailabilityId(availabilityId),
@@ -128,7 +132,7 @@ public class CourtManagementController {
 
     @DeleteMapping("/managed/{ownerId}/availability/{availabilityId}")
     public ResponseEntity<Void> deleteAvailability(@PathVariable Long ownerId, @PathVariable Long availabilityId) {
-        availabilityService.delete(new UserId(ownerId), new CourtAvailabilityId(availabilityId));
+        availabilityService.delete(currentUserService.requireSelf(ownerId), new CourtAvailabilityId(availabilityId));
         return ResponseEntity.noContent().build();
     }
 
@@ -139,7 +143,7 @@ public class CourtManagementController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         var report = reportService.generate(
-                new UserId(ownerId),
+                currentUserService.requireSelf(ownerId),
                 courtId == null ? null : new CourtId(courtId),
                 from,
                 to);
@@ -149,7 +153,7 @@ public class CourtManagementController {
     @PostMapping
     public ResponseEntity<CourtResource> createCourt(@RequestBody CreateCourtResource resource) {
         var court = managementService.create(
-                new UserId(resource.ownerId()),
+                currentUserService.requireSelf(resource.ownerId()),
                 CourtDetailsFromResourceAssembler.from(resource));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(CourtResourceFromEntityAssembler.toResourceFromEntity(court));
@@ -161,7 +165,7 @@ public class CourtManagementController {
             @RequestBody UpdateCourtResource resource) {
         var court = managementService.update(
                 new CourtId(courtId),
-                new UserId(resource.requesterId()),
+                currentUserService.requireSelf(resource.requesterId()),
                 CourtDetailsFromResourceAssembler.from(resource));
         return ResponseEntity.ok(CourtResourceFromEntityAssembler.toResourceFromEntity(court));
     }
@@ -172,7 +176,7 @@ public class CourtManagementController {
             @RequestBody PublishCourtResource resource) {
         var court = managementService.setPublication(
                 new CourtId(courtId),
-                new UserId(resource.requesterId()),
+                currentUserService.requireSelf(resource.requesterId()),
                 resource.published());
         return ResponseEntity.ok(CourtResourceFromEntityAssembler.toResourceFromEntity(court));
     }

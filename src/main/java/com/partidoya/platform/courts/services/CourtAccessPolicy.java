@@ -30,6 +30,26 @@ public class CourtAccessPolicy {
         }
     }
 
+    public void requireCourtCreation(UserId userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId.value().toString()));
+        if (!PlanPolicy.canManageCourts(user)) {
+            throw new ForbiddenActionException("Only court plan accounts can manage courts");
+        }
+        if (user.getPlan() == com.partidoya.platform.users.models.Plan.CANCHA_EMPRENDEDOR
+                && !courtRepository.findByOwnerId(userId).isEmpty()) {
+            throw new ForbiddenActionException("The Emprendedor plan supports one court");
+        }
+    }
+
+    public void requireBusinessReports(UserId userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId.value().toString()));
+        if (!PlanPolicy.canViewCourtReports(user)) {
+            throw new ForbiddenActionException("Reports require the Business plan");
+        }
+    }
+
     public Court requireOwnedCourt(CourtId courtId, UserId ownerId) {
         requireCourtManager(ownerId);
         var court = requireCourt(courtId);

@@ -21,7 +21,7 @@ public class CourtManagementService {
     }
 
     public Court create(UserId ownerId, CourtDetails details) {
-        accessPolicy.requireCourtManager(ownerId);
+        accessPolicy.requireCourtCreation(ownerId);
         return courtRepository.save(new Court(
                 ownerId,
                 details.name(),

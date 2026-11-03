@@ -32,4 +32,14 @@ public class JwtTokenService {
                 .signWith(key)
                 .compact();
     }
+
+    public Long parseUserId(String token) {
+        var subject = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+        return Long.valueOf(subject);
+    }
 }

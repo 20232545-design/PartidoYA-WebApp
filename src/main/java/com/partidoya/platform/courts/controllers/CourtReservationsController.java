@@ -7,6 +7,7 @@ import com.partidoya.platform.courts.dto.ReservationResourceFromEntityAssembler;
 import com.partidoya.platform.courts.services.CourtReservationRequest;
 import com.partidoya.platform.courts.services.CourtReservationService;
 import com.partidoya.platform.users.models.UserId;
+import com.partidoya.platform.auth.security.CurrentUserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +24,11 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Tag(name = "Court Reservations", description = "Court reservation endpoints")
 public class CourtReservationsController {
     private final CourtReservationService reservationService;
+    private final CurrentUserService currentUserService;
 
-    public CourtReservationsController(CourtReservationService reservationService) {
+    public CourtReservationsController(CourtReservationService reservationService, CurrentUserService currentUserService) {
         this.reservationService = reservationService;
+        this.currentUserService = currentUserService;
     }
 
     @PostMapping("/{courtId}/reservations")
@@ -34,7 +37,7 @@ public class CourtReservationsController {
             @RequestBody ReserveCourtResource resource) {
         var reservation = reservationService.reserve(new CourtReservationRequest(
                 new CourtId(courtId),
-                new UserId(resource.userId()),
+                currentUserService.requireSelf(resource.userId()),
                 resource.date(),
                 resource.startTime(),
                 resource.endTime(),

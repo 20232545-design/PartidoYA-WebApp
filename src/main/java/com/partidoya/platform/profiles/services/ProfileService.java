@@ -45,6 +45,17 @@ public class ProfileService {
         return profileRepository.save(profile);
     }
 
+    public Profile updateDetails(UserId userId, com.partidoya.platform.profiles.models.PhoneNumber phoneNumber,
+                                 String district, SportName primarySport, SkillLevel skillLevel,
+                                 Set<TimeSlot> availability, String businessName,
+                                 com.partidoya.platform.profiles.models.PhoneNumber businessPhone,
+                                 String operationDistrict) {
+        var profile = findOrCreate(userId);
+        profile.updateDetails(phoneNumber, district, primarySport, skillLevel, availability,
+                businessName, businessPhone, operationDistrict);
+        return profileRepository.save(profile);
+    }
+
     @Transactional(readOnly = true)
     public Optional<Profile> findById(ProfileId profileId) {
         return profileRepository.findById(profileId);

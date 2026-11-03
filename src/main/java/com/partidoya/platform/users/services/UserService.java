@@ -2,7 +2,6 @@ package com.partidoya.platform.users.services;
 
 import com.partidoya.platform.users.models.User;
 import com.partidoya.platform.users.models.FullName;
-import com.partidoya.platform.users.models.Plan;
 import com.partidoya.platform.users.models.UserId;
 import com.partidoya.platform.users.repositories.UserRepository;
 import com.partidoya.platform.shared.exceptions.ResourceNotFoundException;
@@ -28,12 +27,6 @@ public class UserService {
     public User updateFullName(UserId userId, FullName fullName) {
         var user = requireUser(userId);
         user.updateFullName(fullName);
-        return userRepository.save(user);
-    }
-
-    public User updatePlan(UserId userId, Plan plan) {
-        var user = requireUser(userId);
-        user.updatePlan(plan);
         return userRepository.save(user);
     }
 

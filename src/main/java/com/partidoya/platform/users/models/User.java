@@ -27,6 +27,12 @@ public class User {
     private LocalDate suspendedUntil;
     private LocalDateTime lastAdministrativeActionAt;
     private UserId lastAdministrativeActionBy;
+    private String firstName;
+    private String lastName;
+    private LocalDateTime termsAcceptedAt;
+    private LocalDateTime privacyAcceptedAt;
+    private boolean marketingConsent;
+    private boolean legacyPlanAccess;
 
     protected User() {
     }
@@ -52,12 +58,43 @@ public class User {
     public User(UserId id, EmailAddress email, FullName fullName, HashedPassword password, boolean emailVerified,
                 Role role, Plan plan, UserStatus status, String suspensionReason, LocalDate suspendedUntil,
                 LocalDateTime lastAdministrativeActionAt, UserId lastAdministrativeActionBy) {
+        this(id, email, fullName, password, emailVerified, role, plan, status, suspensionReason, suspendedUntil,
+                lastAdministrativeActionAt, lastAdministrativeActionBy, null, null, null, null, false, false);
+    }
+
+    public User(UserId id, EmailAddress email, FullName fullName, HashedPassword password, boolean emailVerified,
+                Role role, Plan plan, UserStatus status, String suspensionReason, LocalDate suspendedUntil,
+                LocalDateTime lastAdministrativeActionAt, UserId lastAdministrativeActionBy, String firstName,
+                String lastName, LocalDateTime termsAcceptedAt, LocalDateTime privacyAcceptedAt,
+                boolean marketingConsent, boolean legacyPlanAccess) {
         this(id, email, fullName, password, emailVerified, role, plan);
         this.status = status == null ? UserStatus.ACTIVE : status;
         this.suspensionReason = normalize(suspensionReason);
         this.suspendedUntil = suspendedUntil;
         this.lastAdministrativeActionAt = lastAdministrativeActionAt;
         this.lastAdministrativeActionBy = lastAdministrativeActionBy;
+        this.firstName = normalize(firstName);
+        this.lastName = normalize(lastName);
+        this.termsAcceptedAt = termsAcceptedAt;
+        this.privacyAcceptedAt = privacyAcceptedAt;
+        this.marketingConsent = marketingConsent;
+        this.legacyPlanAccess = legacyPlanAccess;
+    }
+
+    public void completeRegistration(String firstName, String lastName, boolean termsAccepted,
+                                     boolean privacyAccepted, boolean marketingConsent) {
+        if (firstName == null || firstName.isBlank() || lastName == null || lastName.isBlank()) {
+            throw new IllegalArgumentException("First name and last name are required");
+        }
+        if (!termsAccepted || !privacyAccepted) {
+            throw new IllegalArgumentException("Terms and privacy policy must be accepted");
+        }
+        var acceptedAt = LocalDateTime.now();
+        this.firstName = firstName.trim();
+        this.lastName = lastName.trim();
+        this.termsAcceptedAt = acceptedAt;
+        this.privacyAcceptedAt = acceptedAt;
+        this.marketingConsent = marketingConsent;
     }
 
     public void updateFullName(FullName fullName) {
@@ -70,6 +107,16 @@ public class User {
             throw new IllegalArgumentException("Plan '%s' is not available for role '%s'".formatted(plan, this.role));
         }
         this.plan = plan;
+    }
+
+    public void activateSubscriptionPlan(Plan plan) {
+        updatePlan(plan);
+        this.legacyPlanAccess = false;
+    }
+
+    public void downgradeAfterSubscription() {
+        this.plan = Plan.defaultForRole(this.role);
+        this.legacyPlanAccess = false;
     }
 
     public void activate(UserId adminId) {

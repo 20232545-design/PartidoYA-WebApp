@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -18,6 +19,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResource> handleNotFound(ResourceNotFoundException ex) {
         return new ResponseEntity<>(new ErrorResource("NOT_FOUND", ex.getMessage()), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResource> handleNoResource(NoResourceFoundException ex) {
+        return new ResponseEntity<>(new ErrorResource("NOT_FOUND", "Endpoint not found"), HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(ResourceConflictException.class)

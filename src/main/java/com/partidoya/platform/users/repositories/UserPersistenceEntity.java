@@ -49,4 +49,22 @@ public class UserPersistenceEntity extends AuditableAbstractPersistenceEntity {
 
     @Column(name = "last_administrative_action_by")
     private Long lastAdministrativeActionBy;
+
+    @Column(name = "first_name", length = 60)
+    private String firstName;
+
+    @Column(name = "last_name", length = 60)
+    private String lastName;
+
+    @Column(name = "terms_accepted_at")
+    private LocalDateTime termsAcceptedAt;
+
+    @Column(name = "privacy_accepted_at")
+    private LocalDateTime privacyAcceptedAt;
+
+    @Column(name = "marketing_consent", nullable = false)
+    private boolean marketingConsent;
+
+    @Column(name = "legacy_plan_access", nullable = false)
+    private boolean legacyPlanAccess;
 }

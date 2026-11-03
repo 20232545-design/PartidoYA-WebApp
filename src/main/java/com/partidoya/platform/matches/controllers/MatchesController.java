@@ -11,6 +11,7 @@ import com.partidoya.platform.matches.dto.CreateMatchCommandFromResourceAssemble
 import com.partidoya.platform.matches.dto.MatchResourceFromEntityAssembler;
 import com.partidoya.platform.matches.services.MatchService;
 import com.partidoya.platform.shared.exceptions.ResourceNotFoundException;
+import com.partidoya.platform.auth.security.CurrentUserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,14 +32,16 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Tag(name = "Matches", description = "Match management endpoints")
 public class MatchesController {
     private final MatchService matchService;
+    private final CurrentUserService currentUserService;
 
-    public MatchesController(MatchService matchService) {
+    public MatchesController(MatchService matchService, CurrentUserService currentUserService) {
         this.matchService = matchService;
+        this.currentUserService = currentUserService;
     }
 
     @PostMapping
     public ResponseEntity<MatchResource> createMatch(@RequestBody CreateMatchResource resource) {
-        var command = CreateMatchCommandFromResourceAssembler.toCommandFromResource(resource);
+        var command = CreateMatchCommandFromResourceAssembler.toCommandFromResource(resource, currentUserService.userId());
         var match = matchService.create(command);
         var body = MatchResourceFromEntityAssembler.toResourceFromEntity(match);
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
@@ -66,14 +69,14 @@ public class MatchesController {
     public ResponseEntity<MatchResource> joinMatch(
             @PathVariable Long matchId,
             @RequestBody JoinMatchResource resource) {
-        var match = matchService.join(new MatchId(matchId), new UserId(resource.userId()));
+        var match = matchService.join(new MatchId(matchId), currentUserService.requireSelf(resource.userId()));
         var body = MatchResourceFromEntityAssembler.toResourceFromEntity(match);
         return ResponseEntity.ok(body);
     }
 
     @GetMapping("/organized/{userId}")
     public ResponseEntity<List<MatchResource>> getMatchesByOrganizer(@PathVariable Long userId) {
-        var matches = matchService.findByOrganizer(new UserId(userId));
+        var matches = matchService.findByOrganizer(currentUserService.requireSelf(userId));
         var body = matches.stream()
                 .map(MatchResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
@@ -82,7 +85,7 @@ public class MatchesController {
 
     @GetMapping("/joined/{userId}")
     public ResponseEntity<List<MatchResource>> getMatchesByParticipant(@PathVariable Long userId) {
-        var matches = matchService.findByParticipant(new UserId(userId));
+        var matches = matchService.findByParticipant(currentUserService.requireSelf(userId));
         var body = matches.stream()
                 .map(MatchResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
@@ -93,7 +96,7 @@ public class MatchesController {
     public ResponseEntity<MatchResource> leaveMatch(
             @PathVariable Long matchId,
             @RequestBody LeaveMatchResource resource) {
-        var match = matchService.leave(new MatchId(matchId), new UserId(resource.userId()));
+        var match = matchService.leave(new MatchId(matchId), currentUserService.requireSelf(resource.userId()));
         var body = MatchResourceFromEntityAssembler.toResourceFromEntity(match);
         return ResponseEntity.ok(body);
     }
@@ -102,7 +105,7 @@ public class MatchesController {
     public ResponseEntity<MatchResource> cancelMatch(
             @PathVariable Long matchId,
             @RequestBody CancelMatchResource resource) {
-        var match = matchService.cancel(new MatchId(matchId), new UserId(resource.requesterId()));
+        var match = matchService.cancel(new MatchId(matchId), currentUserService.requireSelf(resource.requesterId()));
         var body = MatchResourceFromEntityAssembler.toResourceFromEntity(match);
         return ResponseEntity.ok(body);
     }

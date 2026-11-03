@@ -29,7 +29,13 @@ public final class UserPersistenceAssembler {
                 entity.getSuspensionReason(),
                 entity.getSuspendedUntil(),
                 entity.getLastAdministrativeActionAt(),
-                entity.getLastAdministrativeActionBy() == null ? null : new UserId(entity.getLastAdministrativeActionBy()));
+                entity.getLastAdministrativeActionBy() == null ? null : new UserId(entity.getLastAdministrativeActionBy()),
+                entity.getFirstName(),
+                entity.getLastName(),
+                entity.getTermsAcceptedAt(),
+                entity.getPrivacyAcceptedAt(),
+                entity.isMarketingConsent(),
+                entity.isLegacyPlanAccess());
     }
 
     public static UserPersistenceEntity toPersistenceFromDomain(User user) {
@@ -49,6 +55,12 @@ public final class UserPersistenceAssembler {
         entity.setSuspendedUntil(user.getSuspendedUntil());
         entity.setLastAdministrativeActionAt(user.getLastAdministrativeActionAt());
         entity.setLastAdministrativeActionBy(user.getLastAdministrativeActionBy() == null ? null : user.getLastAdministrativeActionBy().value());
+        entity.setFirstName(user.getFirstName());
+        entity.setLastName(user.getLastName());
+        entity.setTermsAcceptedAt(user.getTermsAcceptedAt());
+        entity.setPrivacyAcceptedAt(user.getPrivacyAcceptedAt());
+        entity.setMarketingConsent(user.isMarketingConsent());
+        entity.setLegacyPlanAccess(user.isLegacyPlanAccess());
         return entity;
     }
 }

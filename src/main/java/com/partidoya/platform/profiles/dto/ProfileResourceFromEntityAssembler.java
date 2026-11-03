@@ -22,6 +22,10 @@ public class ProfileResourceFromEntityAssembler {
                 profile.getPrimarySport() != null ? profile.getPrimarySport().value() : null,
                 profile.getSkillLevel() != null ? profile.getSkillLevel().name() : null,
                 availability,
-                preferences);
+                preferences,
+                profile.getDistrict(),
+                profile.getBusinessName(),
+                profile.getBusinessPhone() == null ? null : profile.getBusinessPhone().value(),
+                profile.getOperationDistrict());
     }
 }

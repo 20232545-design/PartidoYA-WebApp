@@ -39,6 +39,7 @@ public class CourtReportService {
             CourtId courtId,
             LocalDate from,
             LocalDate to) {
+        accessPolicy.requireBusinessReports(ownerId);
         var courts = accessPolicy.managedCourts(ownerId, courtId);
         var range = DateRange.resolve(from, to);
         var reservations = courts.isEmpty()

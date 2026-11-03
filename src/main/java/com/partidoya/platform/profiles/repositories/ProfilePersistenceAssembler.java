@@ -38,7 +38,11 @@ public final class ProfilePersistenceAssembler {
                 entity.getPrimarySport() != null ? new SportName(entity.getPrimarySport()) : null,
                 entity.getSkillLevel() != null ? SkillLevel.valueOf(entity.getSkillLevel()) : null,
                 availability,
-                preferences);
+                preferences,
+                entity.getDistrict(),
+                entity.getBusinessName(),
+                entity.getBusinessPhone() == null ? null : new PhoneNumber(entity.getBusinessPhone()),
+                entity.getOperationDistrict());
     }
 
     public static ProfilePersistenceEntity toPersistenceFromDomain(Profile profile) {
@@ -53,6 +57,10 @@ public final class ProfilePersistenceAssembler {
         entity.setPrimarySport(profile.getPrimarySport() != null ? profile.getPrimarySport().value() : null);
         entity.setSkillLevel(profile.getSkillLevel() != null ? profile.getSkillLevel().name() : null);
         entity.setAvailability(profile.getAvailability().stream().map(Enum::name).collect(Collectors.toSet()));
+        entity.setDistrict(profile.getDistrict());
+        entity.setBusinessName(profile.getBusinessName());
+        entity.setBusinessPhone(profile.getBusinessPhone() == null ? null : profile.getBusinessPhone().value());
+        entity.setOperationDistrict(profile.getOperationDistrict());
 
         var preferences = new ArrayList<SportPreferencePersistenceEntity>();
         for (var sp : profile.getSportPreferences()) {

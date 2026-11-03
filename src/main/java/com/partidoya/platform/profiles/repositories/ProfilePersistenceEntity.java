@@ -40,6 +40,18 @@ public class ProfilePersistenceEntity extends AuditableAbstractPersistenceEntity
     @Column(name = "skill_level", length = 20)
     private String skillLevel;
 
+    @Column(length = 80)
+    private String district;
+
+    @Column(name = "business_name", length = 140)
+    private String businessName;
+
+    @Column(name = "business_phone", length = 20)
+    private String businessPhone;
+
+    @Column(name = "operation_district", length = 80)
+    private String operationDistrict;
+
     @ElementCollection
     @CollectionTable(name = "profile_availability", joinColumns = @JoinColumn(name = "profile_id"))
     @Column(name = "time_slot", length = 20)

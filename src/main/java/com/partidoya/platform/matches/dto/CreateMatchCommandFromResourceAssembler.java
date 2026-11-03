@@ -19,8 +19,12 @@ public final class CreateMatchCommandFromResourceAssembler {
     }
 
     public static CreateMatchCommand toCommandFromResource(CreateMatchResource resource) {
+        return toCommandFromResource(resource, new UserId(resource.organizerId()));
+    }
+
+    public static CreateMatchCommand toCommandFromResource(CreateMatchResource resource, UserId organizerId) {
         return new CreateMatchCommand(
-                new UserId(resource.organizerId()),
+                organizerId,
                 resource.courtReservationId(),
                 resource.sport(),
                 new MatchTitle(resource.title()),

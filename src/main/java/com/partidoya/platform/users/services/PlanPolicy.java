@@ -20,6 +20,10 @@ public final class PlanPolicy {
         return user != null && user.isActive() && user.getRole() == Role.ADMIN_GENERAL && user.getPlan() == Plan.ADMIN_GENERAL;
     }
 
+    public static boolean canViewCourtReports(User user) {
+        return canManageCourts(user) && user.getPlan() == Plan.CANCHA_BUSINESS;
+    }
+
     public static boolean isPlayerPlan(Plan plan) {
         return plan == Plan.JUGADOR_BASICO || plan == Plan.JUGADOR_PLUS;
     }

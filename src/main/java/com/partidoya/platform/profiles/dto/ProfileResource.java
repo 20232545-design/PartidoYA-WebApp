@@ -10,5 +10,9 @@ public record ProfileResource(
         String primarySport,
         String skillLevel,
         List<String> availability,
-        List<SportPreferenceResource> sportPreferences) {
+        List<SportPreferenceResource> sportPreferences,
+        String district,
+        String businessName,
+        String businessPhone,
+        String operationDistrict) {
 }
