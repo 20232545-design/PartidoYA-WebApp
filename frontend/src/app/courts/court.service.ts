@@ -4,7 +4,8 @@ import { Observable } from 'rxjs';
 import { API_BASE_URL } from '@shared/services/api-base-url.token';
 import {
   CourtResponse,
-  SaveCourtRequest
+  SaveCourtRequest,
+  CourtMediaResponse
 } from './court.models';
 
 export type {
@@ -16,7 +17,8 @@ export type {
   ManagedReservationResponse,
   ReservationResponse,
   SaveCourtAvailabilityRequest,
-  SaveCourtRequest
+  SaveCourtRequest,
+  CourtMediaResponse
 } from './court.models';
 
 @Injectable({ providedIn: 'root' })
@@ -50,6 +52,30 @@ export class CourtService {
 
   setPublication(id: number, requesterId: number, published: boolean): Observable<CourtResponse> {
     return this.http.post<CourtResponse>(`${this.apiUrl}/${id}/publication`, { requesterId, published });
+  }
+
+  listMedia(courtId: number): Observable<CourtMediaResponse[]> {
+    return this.http.get<CourtMediaResponse[]>(`${this.apiUrl}/${courtId}/media`);
+  }
+
+  uploadMedia(courtId: number, file: File, primary = false): Observable<CourtMediaResponse> {
+    const body = new FormData();
+    body.append('file', file);
+    return this.http.post<CourtMediaResponse>(`${this.apiUrl}/${courtId}/media`, body, {
+      params: new HttpParams().set('primary', primary)
+    });
+  }
+
+  deleteMedia(courtId: number, mediaId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${courtId}/media/${mediaId}`);
+  }
+
+  reorderMedia(courtId: number, mediaIds: number[]): Observable<CourtMediaResponse[]> {
+    return this.http.put<CourtMediaResponse[]>(`${this.apiUrl}/${courtId}/media/order`, { mediaIds });
+  }
+
+  setPrimaryMedia(courtId: number, mediaId: number): Observable<CourtMediaResponse> {
+    return this.http.put<CourtMediaResponse>(`${this.apiUrl}/${courtId}/media/${mediaId}/primary`, {});
   }
 
 }

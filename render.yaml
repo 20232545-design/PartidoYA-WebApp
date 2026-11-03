@@ -30,6 +30,12 @@ services:
         sync: false
       - key: CULQI_PLAN_CANCHA_BUSINESS
         sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
       - key: CORS_ALLOWED_ORIGINS
         value: https://partidoya.pro,https://www.partidoya.pro,https://partidoya-web-20232545.onrender.com
       - key: CORS_ALLOWED_ORIGIN_PATTERNS
@@ -45,7 +51,7 @@ services:
       - key: API_URL
         value: https://partidoya-api-20232545.onrender.com/api/v1
       - key: GOOGLE_MAPS_API_KEY
-        value: ""
+        sync: false
     routes:
       - type: rewrite
         source: /*

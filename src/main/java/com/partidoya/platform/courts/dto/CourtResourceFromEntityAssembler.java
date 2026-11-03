@@ -27,6 +27,11 @@ public final class CourtResourceFromEntityAssembler {
                 court.getMainImageUrl(),
                 court.getImageUrls(),
                 court.getServices(),
-                court.getFeatures());
+                court.getFeatures(),
+                court.getGooglePlaceId(),
+                court.getGooglePlaceName(),
+                court.getSurfaceType(),
+                court.getCapacity(),
+                court.isCovered());
     }
 }

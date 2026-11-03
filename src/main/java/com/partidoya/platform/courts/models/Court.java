@@ -31,6 +31,11 @@ public class Court {
     private List<String> imageUrls;
     private List<String> services;
     private List<String> features;
+    private String googlePlaceId;
+    private String googlePlaceName;
+    private String surfaceType;
+    private Integer capacity;
+    private boolean covered;
 
     protected Court() {
     }
@@ -89,6 +94,15 @@ public class Court {
 
     public void publish() {
         if (!active) throw new IllegalStateException("Inactive courts cannot be published");
+        if (latitude == null || longitude == null || surfaceType == null || capacity == null || capacity <= 0) {
+            throw new IllegalStateException("Completa ubicación, superficie y capacidad antes de publicar");
+        }
+        if (latitude < -18.5 || latitude > 0.5 || longitude < -81.5 || longitude > -68.5) {
+            throw new IllegalStateException("La ubicación debe encontrarse dentro del Perú");
+        }
+        if (mainImageUrl == null && imageUrls.isEmpty()) {
+            throw new IllegalStateException("Agrega al menos una imagen antes de publicar");
+        }
         this.published = true;
     }
 
@@ -122,6 +136,40 @@ public class Court {
 
     public List<String> getFeatures() {
         return Collections.unmodifiableList(features);
+    }
+
+    public void updateVenueMetadata(String googlePlaceId, String googlePlaceName, String surfaceType,
+                                    Integer capacity, boolean covered) {
+        if (capacity != null && capacity <= 0) throw new IllegalArgumentException("court capacity must be greater than zero");
+        this.googlePlaceId = normalize(googlePlaceId);
+        this.googlePlaceName = normalize(googlePlaceName);
+        this.surfaceType = normalize(surfaceType);
+        this.capacity = capacity;
+        this.covered = covered;
+    }
+
+    public void addImage(String secureUrl, boolean primary) {
+        var url = normalize(secureUrl);
+        if (url == null) throw new IllegalArgumentException("image url is required");
+        var images = new ArrayList<>(this.imageUrls);
+        if (!images.contains(url)) images.add(url);
+        this.imageUrls = images;
+        if (primary || this.mainImageUrl == null) this.mainImageUrl = url;
+    }
+
+    public void removeImage(String secureUrl) {
+        var images = new ArrayList<>(this.imageUrls);
+        images.remove(secureUrl);
+        this.imageUrls = images;
+        if (Objects.equals(this.mainImageUrl, secureUrl)) {
+            this.mainImageUrl = images.isEmpty() ? null : images.getFirst();
+        }
+    }
+
+    public void setPrimaryImage(String secureUrl) {
+        var url = normalize(secureUrl);
+        if (url == null || !imageUrls.contains(url)) throw new IllegalArgumentException("La imagen no pertenece a la cancha");
+        this.mainImageUrl = url;
     }
 
     private static String normalize(String value) {

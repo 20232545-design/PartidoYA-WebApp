@@ -13,7 +13,7 @@ public final class CourtPersistenceAssembler {
 
     public static Court toDomainFromPersistence(CourtPersistenceEntity entity) {
         if (entity == null) return null;
-        return new Court(
+        var court = new Court(
                 new CourtId(entity.getId()),
                 new UserId(entity.getOwnerId()),
                 entity.getName(),
@@ -33,6 +33,9 @@ public final class CourtPersistenceAssembler {
                 entity.getImageUrls(),
                 entity.getServices(),
                 entity.getFeatures());
+        court.updateVenueMetadata(entity.getGooglePlaceId(), entity.getGooglePlaceName(), entity.getSurfaceType(),
+                entity.getCapacity(), entity.isCovered());
+        return court;
     }
 
     public static CourtPersistenceEntity toPersistenceFromDomain(Court court) {
@@ -57,6 +60,11 @@ public final class CourtPersistenceAssembler {
         entity.setImageUrls(new ArrayList<>(court.getImageUrls()));
         entity.setServices(new ArrayList<>(court.getServices()));
         entity.setFeatures(new ArrayList<>(court.getFeatures()));
+        entity.setGooglePlaceId(court.getGooglePlaceId());
+        entity.setGooglePlaceName(court.getGooglePlaceName());
+        entity.setSurfaceType(court.getSurfaceType());
+        entity.setCapacity(court.getCapacity());
+        entity.setCovered(court.isCovered());
         return entity;
     }
 }

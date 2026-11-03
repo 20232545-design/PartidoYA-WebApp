@@ -17,6 +17,11 @@ public record CourtDetails(
         String mainImageUrl,
         List<String> imageUrls,
         List<String> services,
-        List<String> features
+        List<String> features,
+        String googlePlaceId,
+        String googlePlaceName,
+        String surfaceType,
+        Integer capacity,
+        boolean covered
 ) {
 }

@@ -22,7 +22,7 @@ public class CourtManagementService {
 
     public Court create(UserId ownerId, CourtDetails details) {
         accessPolicy.requireCourtCreation(ownerId);
-        return courtRepository.save(new Court(
+        var court = new Court(
                 ownerId,
                 details.name(),
                 details.complexName(),
@@ -37,7 +37,10 @@ public class CourtManagementService {
                 details.mainImageUrl(),
                 details.imageUrls(),
                 details.services(),
-                details.features()));
+                details.features());
+        court.updateVenueMetadata(details.googlePlaceId(), details.googlePlaceName(), details.surfaceType(),
+                details.capacity(), details.covered());
+        return courtRepository.save(court);
     }
 
     public Court update(CourtId courtId, UserId requesterId, CourtDetails details) {
@@ -57,6 +60,8 @@ public class CourtManagementService {
                 details.imageUrls(),
                 details.services(),
                 details.features());
+        court.updateVenueMetadata(details.googlePlaceId(), details.googlePlaceName(), details.surfaceType(),
+                details.capacity(), details.covered());
         return courtRepository.save(court);
     }
 

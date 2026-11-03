@@ -6,6 +6,8 @@ import com.partidoya.platform.courts.models.CourtId;
 import com.partidoya.platform.courts.dto.CourtAvailabilityResource;
 import com.partidoya.platform.courts.dto.CourtReportResource;
 import com.partidoya.platform.courts.dto.CourtResource;
+import com.partidoya.platform.courts.dto.CourtMediaResource;
+import com.partidoya.platform.courts.dto.ReorderCourtMediaResource;
 import com.partidoya.platform.courts.dto.CreateCourtResource;
 import com.partidoya.platform.courts.dto.ManagedReservationResource;
 import com.partidoya.platform.courts.dto.PublishCourtResource;
@@ -19,6 +21,7 @@ import com.partidoya.platform.courts.dto.ManagedReservationResourceFromEntityAss
 import com.partidoya.platform.courts.services.CourtAvailabilityInput;
 import com.partidoya.platform.courts.services.CourtAvailabilityService;
 import com.partidoya.platform.courts.services.CourtManagementService;
+import com.partidoya.platform.courts.services.CourtMediaService;
 import com.partidoya.platform.courts.services.CourtReportService;
 import com.partidoya.platform.courts.services.CourtReservationService;
 import com.partidoya.platform.users.models.UserId;
@@ -36,6 +39,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -51,18 +56,21 @@ public class CourtManagementController {
     private final CourtReservationService reservationService;
     private final CourtReportService reportService;
     private final CurrentUserService currentUserService;
+    private final CourtMediaService mediaService;
 
     public CourtManagementController(
             CourtManagementService managementService,
             CourtAvailabilityService availabilityService,
             CourtReservationService reservationService,
             CourtReportService reportService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            CourtMediaService mediaService) {
         this.managementService = managementService;
         this.availabilityService = availabilityService;
         this.reservationService = reservationService;
         this.reportService = reportService;
         this.currentUserService = currentUserService;
+        this.mediaService = mediaService;
     }
 
     @GetMapping("/managed/{ownerId}")
@@ -153,7 +161,7 @@ public class CourtManagementController {
     @PostMapping
     public ResponseEntity<CourtResource> createCourt(@RequestBody CreateCourtResource resource) {
         var court = managementService.create(
-                currentUserService.requireSelf(resource.ownerId()),
+                currentUserService.userId(),
                 CourtDetailsFromResourceAssembler.from(resource));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(CourtResourceFromEntityAssembler.toResourceFromEntity(court));
@@ -165,7 +173,7 @@ public class CourtManagementController {
             @RequestBody UpdateCourtResource resource) {
         var court = managementService.update(
                 new CourtId(courtId),
-                currentUserService.requireSelf(resource.requesterId()),
+                currentUserService.userId(),
                 CourtDetailsFromResourceAssembler.from(resource));
         return ResponseEntity.ok(CourtResourceFromEntityAssembler.toResourceFromEntity(court));
     }
@@ -176,9 +184,40 @@ public class CourtManagementController {
             @RequestBody PublishCourtResource resource) {
         var court = managementService.setPublication(
                 new CourtId(courtId),
-                currentUserService.requireSelf(resource.requesterId()),
+                currentUserService.userId(),
                 resource.published());
         return ResponseEntity.ok(CourtResourceFromEntityAssembler.toResourceFromEntity(court));
+    }
+
+    @GetMapping("/{courtId}/media")
+    public ResponseEntity<List<CourtMediaResource>> listMedia(@PathVariable Long courtId) {
+        return ResponseEntity.ok(mediaService.list(new CourtId(courtId)));
+    }
+
+    @PostMapping(value = "/{courtId}/media", consumes = "multipart/form-data")
+    public ResponseEntity<CourtMediaResource> uploadMedia(
+            @PathVariable Long courtId,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(defaultValue = "false") boolean primary) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                mediaService.upload(new CourtId(courtId), currentUserService.userId(), file, primary));
+    }
+
+    @DeleteMapping("/{courtId}/media/{mediaId}")
+    public ResponseEntity<Void> deleteMedia(@PathVariable Long courtId, @PathVariable Long mediaId) {
+        mediaService.delete(mediaId, currentUserService.userId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{courtId}/media/order")
+    public ResponseEntity<List<CourtMediaResource>> reorderMedia(
+            @PathVariable Long courtId, @RequestBody ReorderCourtMediaResource resource) {
+        return ResponseEntity.ok(mediaService.reorder(new CourtId(courtId), currentUserService.userId(), resource.mediaIds()));
+    }
+
+    @PutMapping("/{courtId}/media/{mediaId}/primary")
+    public ResponseEntity<CourtMediaResource> setPrimaryMedia(@PathVariable Long courtId, @PathVariable Long mediaId) {
+        return ResponseEntity.ok(mediaService.setPrimary(new CourtId(courtId), mediaId, currentUserService.userId()));
     }
 
     private CourtAvailabilityInput availabilityInput(SaveCourtAvailabilityResource resource) {

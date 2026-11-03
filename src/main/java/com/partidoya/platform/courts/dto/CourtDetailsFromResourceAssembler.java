@@ -12,13 +12,15 @@ public final class CourtDetailsFromResourceAssembler {
         return new CourtDetails(resource.name(), resource.complexName(), resource.description(), resource.address(),
                 resource.district(), resource.latitude(), resource.longitude(), resource.pricePerHour(),
                 resource.sports(), resource.schedules(), resource.mainImageUrl(), resource.imageUrls(),
-                resource.services(), resource.features());
+                resource.services(), resource.features(), resource.googlePlaceId(), resource.googlePlaceName(),
+                resource.surfaceType(), resource.capacity(), resource.covered());
     }
 
     public static CourtDetails from(UpdateCourtResource resource) {
         return new CourtDetails(resource.name(), resource.complexName(), resource.description(), resource.address(),
                 resource.district(), resource.latitude(), resource.longitude(), resource.pricePerHour(),
                 resource.sports(), resource.schedules(), resource.mainImageUrl(), resource.imageUrls(),
-                resource.services(), resource.features());
+                resource.services(), resource.features(), resource.googlePlaceId(), resource.googlePlaceName(),
+                resource.surfaceType(), resource.capacity(), resource.covered());
     }
 }

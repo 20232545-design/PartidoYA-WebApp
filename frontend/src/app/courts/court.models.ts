@@ -18,6 +18,11 @@ export interface CourtResponse {
   imageUrls: string[];
   services: string[];
   features: string[];
+  googlePlaceId: string | null;
+  googlePlaceName: string | null;
+  surfaceType: string | null;
+  capacity: number | null;
+  covered: boolean;
 }
 
 export interface SaveCourtRequest {
@@ -37,6 +42,22 @@ export interface SaveCourtRequest {
   imageUrls: string[];
   services: string[];
   features: string[];
+  googlePlaceId: string | null;
+  googlePlaceName: string | null;
+  surfaceType: string | null;
+  capacity: number | null;
+  covered: boolean;
+}
+
+export interface CourtMediaResponse {
+  id: number;
+  courtId: number;
+  source: string;
+  secureUrl: string;
+  googlePhotoName: string | null;
+  attribution: string | null;
+  displayOrder: number;
+  primaryAsset: boolean;
 }
 
 export interface ReservationResponse {

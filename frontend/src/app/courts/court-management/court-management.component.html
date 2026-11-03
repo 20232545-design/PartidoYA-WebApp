@@ -1,141 +1,116 @@
 <section class="admin-courts-page">
   <div class="container">
     <header class="admin-header">
-      <div>
-        <span>Panel de canchas</span>
-        <h1>Administra tus canchas</h1>
-        <p>Publica tus espacios, horarios y precios para que los jugadores puedan reservar.</p>
-      </div>
+      <div><span>Panel de canchas</span><h1>{{ editingCourtId ? 'Editar cancha' : 'Registrar una cancha' }}</h1><p>Completa el asistente y guarda un borrador antes de publicar.</p></div>
       <a routerLink="/home" class="back-link">Volver al dashboard</a>
     </header>
 
-    @if (errorMessage) {
-      <div class="alert alert-error">{{ errorMessage }}</div>
-    }
-    @if (successMessage) {
-      <div class="alert alert-success">{{ successMessage }}</div>
-    }
+    @if (errorMessage) { <div class="alert alert-error">{{ errorMessage }}</div> }
+    @if (successMessage) { <div class="alert alert-success">{{ successMessage }}</div> }
 
-    <div class="admin-layout">
-      <form class="court-form" (submit)="$event.preventDefault(); saveCourt()">
-        <div class="form-title">
-          <h2>{{ editingCourtId ? 'Editar cancha' : 'Nueva cancha' }}</h2>
-          @if (editingCourtId) {
-            <button type="button" class="link-button" (click)="resetForm()">Cancelar edición</button>
+    <nav class="stepper" aria-label="Progreso del registro">
+      @for (label of steps; track label; let index = $index) {
+        <button type="button" [class.active]="step === index + 1" [class.complete]="step > index + 1" (click)="goToStep(index + 1)">
+          <span>{{ index + 1 }}</span><strong>{{ label }}</strong>
+        </button>
+      }
+    </nav>
+
+    <div class="wizard-layout">
+      <form class="court-form" (submit)="$event.preventDefault()">
+        @if (step === 2) {
+          <section class="wizard-step">
+            <div class="form-title"><div><small>Paso 2</small><h2>Encuentra tu cancha</h2><p>Busca el negocio o la dirección; Google completa la ubicación por ti.</p></div></div>
+            <div #placeAutocompleteHost class="places-host"></div>
+            @if (mapsMessage) { <div class="maps-note" [class.warning]="!mapsReady">{{ mapsMessage }}</div> }
+            @if (form.googlePlaceName) { <div class="place-selected"><span>Ubicación seleccionada</span><strong>{{ form.googlePlaceName }}</strong><p>{{ form.address }}</p></div> }
+            <div class="form-grid">
+              <label>Dirección<input type="text" name="address" [(ngModel)]="form.address" placeholder="Av. Ejemplo 123" required></label>
+              <label>Distrito<input type="text" name="district" [(ngModel)]="form.district" placeholder="Miraflores" required></label>
+            </div>
+            @if (form.latitude !== null && form.longitude !== null) { <div #mapHost class="location-map" aria-label="Mapa de la ubicación seleccionada"></div><small class="map-help">Puedes arrastrar el marcador o tocar el mapa para ajustar el punto.</small> }
+          </section>
+        }
+
+        @if (step === 1) {
+          <section class="wizard-step">
+            <div class="form-title"><div><small>Paso 1</small><h2>Datos de la cancha</h2><p>Describe el espacio que verán los jugadores.</p></div>@if (editingCourtId) { <button type="button" class="link-button" (click)="resetForm()">Cancelar edición</button> }</div>
+            <div class="form-grid">
+              <label>Nombre de la cancha<input type="text" name="name" [(ngModel)]="form.name" placeholder="Cancha 1" required></label>
+              <label>Complejo deportivo<input type="text" name="complexName" [(ngModel)]="form.complexName" placeholder="Nombre comercial"></label>
+            </div>
+            <label>Descripción<textarea name="description" rows="3" [(ngModel)]="form.description" placeholder="Cuéntales qué hace especial a tu cancha"></textarea></label>
+            <fieldset><legend>Deportes</legend><div class="chip-grid">@for (sport of sports; track sport) { <button type="button" [class.selected]="form.sports.includes(sport)" (click)="toggleListValue(form.sports, sport)">{{ sport }}</button> }</div></fieldset>
+            <div class="form-grid">
+              <label>Superficie<select name="surfaceType" [(ngModel)]="form.surfaceType"><option [ngValue]="null">Selecciona</option>@for (surface of surfaces; track surface) { <option [value]="surface">{{ surface }}</option> }</select></label>
+              <label>Capacidad de jugadores<input type="number" name="capacity" min="1" [(ngModel)]="form.capacity"></label>
+            </div>
+            <label class="switch-row"><input type="checkbox" name="covered" [(ngModel)]="form.covered"><span>La cancha es techada</span></label>
+            <fieldset><legend>Servicios disponibles</legend><div class="chip-grid">@for (service of serviceOptions; track service) { <button type="button" [class.selected]="form.services.includes(service)" (click)="toggleListValue(form.services, service)">{{ service }}</button> }</div></fieldset>
+          </section>
+        }
+
+        @if (step === 4) {
+          <section class="wizard-step">
+            <div class="form-title"><div><small>Paso 4</small><h2>Horarios y precio</h2><p>Define la jornada habitual; luego podrás bloquear fechas concretas desde disponibilidad.</p></div></div>
+            <div class="form-grid"><label>Precio por hora (S/)<input type="number" name="pricePerHour" min="0" step="0.10" [(ngModel)]="form.pricePerHour"></label></div>
+            <div class="schedule-list">
+              @for (day of dayOptions; track day.key) {
+                <div class="schedule-row" [class.disabled]="!schedules[day.key].enabled">
+                  <label class="day-toggle"><input type="checkbox" [name]="day.key + '-enabled'" [(ngModel)]="schedules[day.key].enabled"><strong>{{ day.label }}</strong></label>
+                  <label>Abre<input type="time" [name]="day.key + '-start'" [(ngModel)]="schedules[day.key].start" [disabled]="!schedules[day.key].enabled"></label>
+                  <label>Cierra<input type="time" [name]="day.key + '-end'" [(ngModel)]="schedules[day.key].end" [disabled]="!schedules[day.key].enabled"></label>
+                  <label>Turno<select [name]="day.key + '-duration'" [(ngModel)]="schedules[day.key].duration" [disabled]="!schedules[day.key].enabled"><option [ngValue]="30">30 min</option><option [ngValue]="60">60 min</option><option [ngValue]="90">90 min</option><option [ngValue]="120">120 min</option></select></label>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        @if (step === 3) {
+          <section class="wizard-step">
+            <div class="form-title"><div><small>Paso 3</small><h2>Galería de la cancha</h2><p>Consulta fotos de referencia de Google y sube tus propias imágenes a Cloudinary.</p></div></div>
+            @if (googlePhotoPreviews.length) {
+              <label class="switch-row"><input type="checkbox" name="showGooglePhotos" [(ngModel)]="showGooglePhotos"><span>Mostrar fotografías disponibles de Google Maps</span></label>
+              @if (showGooglePhotos) { <div class="places-photos"><span>Referencias servidas por Google Maps; no se copian a Cloudinary</span><div class="photo-grid google-photos">@for (photo of googlePhotoPreviews; track photo.url) { <figure><img [src]="photo.url" alt="Foto referencial del lugar proporcionada por Google Maps">@if (photo.attribution) { <figcaption>Foto: {{ photo.attribution }}</figcaption> }</figure> }</div></div> }
+            } @else if (form.googlePlaceId) { <div class="maps-note">No encontramos fotografías de este lugar en Google Maps. Puedes subir tus propias imágenes.</div> }
+            <label class="upload-zone" [class.is-dragging]="draggingFiles" (dragover)="onFileDragOver($event)" (dragleave)="onFileDragLeave($event)" (drop)="onFilesDropped($event)"><input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onFilesSelected($event)"><strong>Seleccionar o arrastrar imágenes</strong><span>JPG, PNG o WebP · máximo 8 MB por archivo y 8 archivos por carga</span></label>
+            @if (uploading) { <div class="upload-progress" role="progressbar" aria-label="Progreso de carga" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="uploadProgress"><span [style.width.%]="uploadProgress"></span><strong>{{ uploadProgress }}%</strong></div> }
+            @if (filePreviews.length) { <div class="photo-grid uploads">@for (preview of filePreviews; track preview; let first = $first) { <div><img [src]="preview" alt="Vista previa"><span>{{ first && media.length === 0 ? 'Principal' : 'Galería' }}</span></div> }</div> }
+            @if (media.length) { <h3 class="subheading">Imágenes guardadas</h3><div class="photo-grid uploads">@for (item of media; track item.id; let index = $index) { <div><img [src]="item.secureUrl" alt="Imagen guardada"><span>{{ item.primaryAsset ? 'Principal' : 'Galería' }}</span><div class="media-tools"><button type="button" (click)="moveMedia(index, -1)" [disabled]="$first" aria-label="Mover a la izquierda">←</button><button type="button" (click)="moveMedia(index, 1)" [disabled]="$last" aria-label="Mover a la derecha">→</button><button type="button" (click)="setPrimaryMedia(item)" [disabled]="item.primaryAsset">Portada</button><button type="button" class="delete-media" (click)="deleteMedia(item)">Eliminar</button></div></div> }</div> }
+          </section>
+        }
+
+        @if (step === 5) {
+          <section class="wizard-step review-step">
+            <div class="form-title"><div><small>Paso 5</small><h2>Revisa antes de publicar</h2><p>Puedes guardar como borrador incluso si Maps o Cloudinary aún no están configurados.</p></div></div>
+            <div class="review-grid">
+              <article><span>Ubicación</span><strong>{{ form.googlePlaceName || form.address }}</strong><p>{{ form.district }}</p><button type="button" (click)="goToStep(2)">Editar</button></article>
+              <article><span>Cancha</span><strong>{{ form.name }}</strong><p>{{ form.sports.join(', ') }} · {{ form.surfaceType }} · {{ form.capacity }} jugadores</p><button type="button" (click)="goToStep(1)">Editar</button></article>
+              <article><span>Precio</span><strong>S/ {{ form.pricePerHour | number:'1.2-2' }}</strong><p>por hora</p><button type="button" (click)="goToStep(4)">Editar</button></article>
+              <article><span>Horarios</span><strong>{{ enabledSchedules.length }} días activos</strong><p>Turnos configurados</p><button type="button" (click)="goToStep(4)">Editar</button></article>
+              <article><span>Galería</span><strong>{{ media.length + selectedFiles.length }} imágenes</strong><p>{{ canPublish ? 'Lista para publicar' : 'Necesita ubicación e imagen para publicar' }}</p><button type="button" (click)="goToStep(3)">Editar</button></article>
+            </div>
+            <div class="publish-note"><strong>Sin renovación ni cargos automáticos</strong><p>La publicación depende de que tu plan de cancha siga vigente.</p></div>
+          </section>
+        }
+
+        <div class="wizard-actions">
+          <button type="button" class="secondary-action" (click)="previousStep()" [disabled]="step === 1 || saving">Anterior</button>
+          @if (step < 5) { <button type="button" class="primary-action" (click)="nextStep()">Continuar</button> }
+          @else {
+            <button type="button" class="secondary-action" (click)="saveCourt(false)" [disabled]="saving">{{ saving ? 'Guardando...' : 'Guardar borrador' }}</button>
+            <button type="button" class="primary-action" (click)="saveCourt(true)" [disabled]="saving || !canPublish">{{ uploading ? 'Subiendo imágenes...' : saving ? 'Guardando...' : 'Guardar y publicar' }}</button>
           }
         </div>
-
-        <label>
-          Nombre
-          <input type="text" name="name" [(ngModel)]="form.name" required>
-        </label>
-
-        <label>
-          Complejo
-          <input type="text" name="complexName" [(ngModel)]="form.complexName">
-        </label>
-
-        <label>
-          Descripción
-          <textarea name="description" rows="3" [(ngModel)]="form.description"></textarea>
-        </label>
-
-        <div class="form-grid">
-          <label>
-            Distrito
-            <input type="text" name="district" [(ngModel)]="form.district" required>
-          </label>
-          <label>
-            Precio por hora
-            <input type="number" name="pricePerHour" min="0" step="0.10" [(ngModel)]="form.pricePerHour" required>
-          </label>
-        </div>
-
-        <label>
-          Dirección
-          <input type="text" name="address" [(ngModel)]="form.address" required>
-        </label>
-
-        <div class="form-grid">
-          <label>
-            Latitud
-            <input type="number" name="latitude" step="0.000001" [(ngModel)]="form.latitude">
-          </label>
-          <label>
-            Longitud
-            <input type="number" name="longitude" step="0.000001" [(ngModel)]="form.longitude">
-          </label>
-        </div>
-
-        <label>
-          Deportes
-          <input type="text" name="sports" [(ngModel)]="sportsInput" placeholder="Fútbol, Voleibol" required>
-        </label>
-
-        <label>
-          Horarios
-          <input type="text" name="schedules" [(ngModel)]="schedulesInput" placeholder="18:00-19:00, 19:00-20:00" required>
-        </label>
-
-        <label>
-          Imagen principal
-          <input type="url" name="mainImageUrl" [(ngModel)]="form.mainImageUrl" placeholder="https://...">
-        </label>
-
-        <label>
-          Galería
-          <input type="text" name="imageUrls" [(ngModel)]="imageUrlsInput" placeholder="URLs separadas por coma">
-        </label>
-
-        <label>
-          Servicios
-          <input type="text" name="services" [(ngModel)]="servicesInput" placeholder="Vestidores, Estacionamiento">
-        </label>
-
-        <label>
-          Características
-          <input type="text" name="features" [(ngModel)]="featuresInput" placeholder="Grass sintético, Techada">
-        </label>
-
-        <button type="submit" class="primary-action" [disabled]="saving">
-          {{ saving ? 'Guardando...' : (editingCourtId ? 'Guardar cambios' : 'Crear cancha') }}
-        </button>
       </form>
 
-      <main class="courts-panel">
-        <div class="panel-header">
-          <h2>Tus canchas</h2>
-          <span>{{ courts.length }} registradas</span>
-        </div>
-
-        @if (loading) {
-          <div class="state-box">Cargando canchas...</div>
-        } @else if (courts.length === 0) {
-          <div class="state-box">Aún no tienes canchas registradas.</div>
-        } @else {
-          <div class="managed-list">
-            @for (court of courts; track trackCourt($index, court)) {
-              <article class="managed-card">
-                <div class="managed-image" [style.backgroundImage]="court.mainImageUrl ? 'url(' + court.mainImageUrl + ')' : null"></div>
-                <div class="managed-body">
-                  <div class="managed-topline">
-                    <span [class.is-published]="court.published">{{ court.published ? 'Publicada' : 'Borrador' }}</span>
-                    <strong>S/ {{ court.pricePerHour | number:'1.2-2' }}</strong>
-                  </div>
-                  <h3>{{ court.name }}</h3>
-                  <p>{{ court.district }} · {{ court.sports.join(', ') }}</p>
-                  <div class="managed-actions">
-                    <button type="button" class="secondary-action" (click)="editCourt(court)">Editar</button>
-                    <button type="button" class="primary-action small" (click)="togglePublication(court)">
-                      {{ court.published ? 'Despublicar' : 'Publicar' }}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            }
-          </div>
-        }
-      </main>
+      <aside class="courts-panel">
+        <div class="panel-header"><h2>Tus canchas</h2><span>{{ courts.length }} registradas</span></div>
+        @if (loading) { <div class="state-box">Cargando canchas...</div> }
+        @else if (courts.length === 0) { <div class="state-box">Aún no tienes canchas registradas.</div> }
+        @else { <div class="managed-list">@for (court of courts; track trackCourt($index, court)) { <article class="managed-card"><div class="managed-image" [style.backgroundImage]="court.mainImageUrl ? 'url(' + court.mainImageUrl + ')' : null"></div><div class="managed-body"><div class="managed-topline"><span [class.is-published]="court.published">{{ court.published ? 'Publicada' : 'Borrador' }}</span><strong>S/ {{ court.pricePerHour | number:'1.2-2' }}</strong></div><h3>{{ court.name }}</h3><p>{{ court.district }} · {{ court.sports.join(', ') }}</p><div class="managed-actions"><button type="button" class="secondary-action" (click)="editCourt(court)">Editar</button><button type="button" class="primary-action small" (click)="togglePublication(court)">{{ court.published ? 'Despublicar' : 'Publicar' }}</button></div></div></article> }</div> }
+      </aside>
     </div>
   </div>
 </section>

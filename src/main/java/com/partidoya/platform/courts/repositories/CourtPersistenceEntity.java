@@ -42,6 +42,20 @@ public class CourtPersistenceEntity extends AuditableAbstractPersistenceEntity {
     private Double latitude;
     private Double longitude;
 
+    @Column(name = "google_place_id", length = 255)
+    private String googlePlaceId;
+
+    @Column(name = "google_place_name", length = 180)
+    private String googlePlaceName;
+
+    @Column(name = "surface_type", length = 60)
+    private String surfaceType;
+
+    private Integer capacity;
+
+    @Column(nullable = false)
+    private boolean covered;
+
     @Column(name = "price_per_hour", nullable = false, precision = 10, scale = 2)
     private BigDecimal pricePerHour;
 

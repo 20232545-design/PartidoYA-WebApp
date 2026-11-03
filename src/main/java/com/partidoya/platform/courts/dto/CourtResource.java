@@ -22,6 +22,11 @@ public record CourtResource(
         String mainImageUrl,
         List<String> imageUrls,
         List<String> services,
-        List<String> features
+        List<String> features,
+        String googlePlaceId,
+        String googlePlaceName,
+        String surfaceType,
+        Integer capacity,
+        boolean covered
 ) {
 }

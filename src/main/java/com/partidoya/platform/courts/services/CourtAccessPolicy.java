@@ -8,6 +8,7 @@ import com.partidoya.platform.users.repositories.UserRepository;
 import com.partidoya.platform.users.services.PlanPolicy;
 import com.partidoya.platform.shared.exceptions.ForbiddenActionException;
 import com.partidoya.platform.shared.exceptions.ResourceNotFoundException;
+import com.partidoya.platform.subscriptions.services.SubscriptionAccessService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,23 +17,24 @@ import java.util.List;
 public class CourtAccessPolicy {
     private final CourtRepository courtRepository;
     private final UserRepository userRepository;
+    private final SubscriptionAccessService subscriptionAccessService;
 
-    public CourtAccessPolicy(CourtRepository courtRepository, UserRepository userRepository) {
+    public CourtAccessPolicy(CourtRepository courtRepository, UserRepository userRepository,
+                             SubscriptionAccessService subscriptionAccessService) {
         this.courtRepository = courtRepository;
         this.userRepository = userRepository;
+        this.subscriptionAccessService = subscriptionAccessService;
     }
 
     public void requireCourtManager(UserId userId) {
-        var user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", userId.value().toString()));
+        var user = synchronizedUser(userId);
         if (!PlanPolicy.canManageCourts(user)) {
             throw new ForbiddenActionException("Only court plan accounts can manage courts");
         }
     }
 
     public void requireCourtCreation(UserId userId) {
-        var user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", userId.value().toString()));
+        var user = synchronizedUser(userId);
         if (!PlanPolicy.canManageCourts(user)) {
             throw new ForbiddenActionException("Only court plan accounts can manage courts");
         }
@@ -43,8 +45,7 @@ public class CourtAccessPolicy {
     }
 
     public void requireBusinessReports(UserId userId) {
-        var user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", userId.value().toString()));
+        var user = synchronizedUser(userId);
         if (!PlanPolicy.canViewCourtReports(user)) {
             throw new ForbiddenActionException("Reports require the Business plan");
         }
@@ -82,11 +83,18 @@ public class CourtAccessPolicy {
 
     public boolean isEligibleForReservations(Court court) {
         return court.canReceiveReservations()
-                && userRepository.findById(court.getOwnerId()).map(PlanPolicy::canManageCourts).orElse(false);
+                && userRepository.findById(court.getOwnerId()).map(subscriptionAccessService::synchronize)
+                .map(PlanPolicy::canManageCourts).orElse(false);
     }
 
     private Court requireCourt(CourtId courtId) {
         return courtRepository.findById(courtId)
                 .orElseThrow(() -> new ResourceNotFoundException("Court", courtId.value().toString()));
+    }
+
+    private com.partidoya.platform.users.models.User synchronizedUser(UserId userId) {
+        return userRepository.findById(userId)
+                .map(subscriptionAccessService::synchronize)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId.value().toString()));
     }
 }
