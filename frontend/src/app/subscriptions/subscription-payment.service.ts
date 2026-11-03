@@ -21,15 +21,15 @@ export class SubscriptionPaymentService {
   private scriptPromise: Promise<void> | null = null;
   private publicKey: string | null = null;
 
-  async captureCardToken(description: string): Promise<string> {
+  async captureCardToken(description: string, amountCents: number): Promise<string> {
     await this.ensureCheckoutLoaded();
-    if (!window.Culqi || !this.publicKey) throw new Error('Culqi no está disponible para suscripciones.');
+    if (!window.Culqi || !this.publicKey) throw new Error('Culqi no está disponible para pagos.');
     window.Culqi.publicKey = this.publicKey;
     window.Culqi.settings({
       title: 'PartidoYA',
       currency: 'PEN',
       description,
-      amount: 0
+      amount: amountCents
     });
     window.Culqi.options({
       lang: 'es',
@@ -44,7 +44,7 @@ export class SubscriptionPaymentService {
       },
       style: {
         buttonBackground: '#c6f135',
-        buttonText: 'Guardar tarjeta',
+        buttonText: 'Pagar ahora',
         buttonTextColor: '#0a0f1a'
       }
     });

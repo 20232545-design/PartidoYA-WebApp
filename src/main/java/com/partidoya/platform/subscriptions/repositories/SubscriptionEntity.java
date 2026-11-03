@@ -32,6 +32,9 @@ public class SubscriptionEntity extends AuditableAbstractPersistenceEntity {
     @Column(nullable = false, length = 30)
     private String provider;
 
+    @Column(name = "payment_mode", nullable = false, length = 30)
+    private String paymentMode = "RECURRING_LEGACY";
+
     @Column(name = "provider_customer_id", length = 120)
     private String providerCustomerId;
 

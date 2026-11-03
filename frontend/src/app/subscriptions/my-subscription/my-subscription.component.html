@@ -3,7 +3,7 @@
     <header class="page-heading">
       <span>Cuenta y facturación</span>
       <h1>Mi suscripción</h1>
-      <p>Consulta el estado real de tu plan, las próximas fechas y los pagos confirmados por Culqi.</p>
+      <p>Compra 30 días de acceso con Culqi. No guardamos tu tarjeta ni realizamos renovaciones automáticas.</p>
     </header>
 
     @if (message) { <div class="message success">{{ message }}</div> }
@@ -23,12 +23,12 @@
           </div>
           @if (currentPlan) {
             <p>{{ currentPlan.description }}</p>
-            <strong class="price">{{ currentPlan.amountCents === 0 ? 'Gratis' : formatAmount(currentPlan.amountCents) + ' al mes' }}</strong>
+            <strong class="price">{{ currentPlan.amountCents === 0 ? 'Gratis' : formatAmount(currentPlan.amountCents) + ' por 30 días' }}</strong>
           }
           @if (data.legacyAccess) {
             <div class="legacy-note">Este acceso histórico se conserva sin generar cargos retroactivos.</div>
           }
-          @if (data.subscription?.status === 'ACTIVE' || data.subscription?.status === 'PENDING' || data.subscription?.status === 'PAST_DUE') {
+          @if (data.subscription?.paymentMode === 'RECURRING_LEGACY' && (data.subscription?.status === 'ACTIVE' || data.subscription?.status === 'PENDING' || data.subscription?.status === 'PAST_DUE')) {
             <button type="button" class="cancel-button" (click)="cancel()" [disabled]="processing === 'cancel'">
               {{ processing === 'cancel' ? 'Cancelando...' : 'Cancelar suscripción' }}
             </button>
@@ -36,30 +36,30 @@
         </article>
 
         <article class="dates-card">
-          <h2>Estado de renovación</h2>
+          <h2>Vigencia del acceso</h2>
           <dl>
             <div><dt>Estado</dt><dd>{{ statusLabel }}</dd></div>
-            <div><dt>Próxima renovación</dt><dd>{{ data.subscription?.nextRenewalAt ? (data.subscription?.nextRenewalAt | date:'dd/MM/yyyy') : 'No programada' }}</dd></div>
+            <div><dt>Renovación automática</dt><dd>{{ data.subscription?.paymentMode === 'RECURRING_LEGACY' ? 'Activa en plan anterior' : 'No programada' }}</dd></div>
             <div><dt>Fin del periodo</dt><dd>{{ data.subscription?.currentPeriodEnd ? (data.subscription?.currentPeriodEnd | date:'dd/MM/yyyy') : 'No disponible' }}</dd></div>
           </dl>
-          <small>Las fechas aparecen sólo después de un cobro verificado.</small>
+          <small>Los pagos nuevos agregan 30 días a tu vigencia actual cuando renuevas antes del vencimiento.</small>
         </article>
       </div>
 
-      @if (availablePlans.length && data.subscription?.status !== 'ACTIVE' && data.subscription?.status !== 'PENDING') {
+      @if (availablePlans.length && data.subscription?.paymentMode !== 'RECURRING_LEGACY') {
         <section class="available-section">
           <div>
             <span>Opciones disponibles</span>
-            <h2>Elige un plan pagado</h2>
+            <h2>Compra o renueva 30 días</h2>
           </div>
           <div class="available-grid">
             @for (plan of availablePlans; track plan.code) {
               <article>
                 <h3>{{ plan.displayName }}</h3>
-                <strong>{{ formatAmount(plan.amountCents) }} <small>/mes</small></strong>
+                <strong>{{ formatAmount(plan.amountCents) }} <small>/30 días</small></strong>
                 <p>{{ plan.description }}</p>
                 <button type="button" (click)="subscribe(plan)" [disabled]="processing !== '' || !plan.subscriptionAvailable">
-                  {{ processing === plan.code ? 'Abriendo Culqi...' : plan.subscriptionAvailable ? 'Suscribirme' : 'No disponible' }}
+                  {{ processing === plan.code ? 'Procesando...' : plan.subscriptionAvailable ? (plan.code === data.currentPlanCode ? 'Renovar 30 días' : 'Comprar 30 días') : 'No disponible' }}
                 </button>
               </article>
             }

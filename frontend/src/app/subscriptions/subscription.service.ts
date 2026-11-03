@@ -21,7 +21,11 @@ export class SubscriptionService {
       tokenId,
       termsAccepted: true,
       idempotencyKey: crypto.randomUUID()
-    });
+    }).pipe(
+      tap(result => {
+        if (result.status === 'ACTIVE') this.sessionStore.updatePlan(result.planCode);
+      })
+    );
   }
 
   getMine(): Observable<MySubscription> {

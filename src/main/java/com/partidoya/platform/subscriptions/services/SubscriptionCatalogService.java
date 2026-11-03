@@ -7,29 +7,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class SubscriptionCatalogService {
     private final SubscriptionPlanRepository repository;
     private final String publicKey;
     private final String secretKey;
-    private final Map<String, String> providerPlanIds;
 
     public SubscriptionCatalogService(
             SubscriptionPlanRepository repository,
             @Value("${culqi.public-key:}") String publicKey,
-            @Value("${culqi.secret-key:}") String secretKey,
-            @Value("${culqi.subscription-plan-ids.jugador-plus:}") String playerPlus,
-            @Value("${culqi.subscription-plan-ids.cancha-emprendedor:}") String courtEntrepreneur,
-            @Value("${culqi.subscription-plan-ids.cancha-business:}") String courtBusiness) {
+            @Value("${culqi.secret-key:}") String secretKey) {
         this.repository = repository;
         this.publicKey = publicKey;
         this.secretKey = secretKey;
-        this.providerPlanIds = Map.of(
-                "JUGADOR_PLUS", playerPlus,
-                "CANCHA_EMPRENDEDOR", courtEntrepreneur,
-                "CANCHA_BUSINESS", courtBusiness);
     }
 
     @Transactional(readOnly = true)
@@ -49,8 +40,7 @@ public class SubscriptionCatalogService {
     }
 
     private boolean providerAvailable(String planCode) {
-        var planId = providerPlanIds.get(planCode);
-        return notBlank(publicKey) && notBlank(secretKey) && notBlank(planId);
+        return notBlank(publicKey) && notBlank(secretKey);
     }
 
     private static boolean notBlank(String value) {

@@ -7,6 +7,8 @@ import com.partidoya.platform.subscriptions.models.SubscriptionStatus;
 import com.partidoya.platform.subscriptions.payments.ProviderSubscription;
 import com.partidoya.platform.subscriptions.payments.SubscriptionPaymentGateway;
 import com.partidoya.platform.subscriptions.payments.VerifiedSubscriptionEvent;
+import com.partidoya.platform.subscriptions.payments.OneTimePaymentGateway;
+import com.partidoya.platform.subscriptions.payments.ChargeResult;
 import com.partidoya.platform.subscriptions.repositories.ProcessedProviderEventRepository;
 import com.partidoya.platform.subscriptions.repositories.SubscriptionEntity;
 import com.partidoya.platform.subscriptions.repositories.SubscriptionPaymentEntity;
@@ -45,6 +47,8 @@ class SubscriptionServiceTest {
     private UserRepository userRepository;
     private ProfileRepository profileRepository;
     private SubscriptionPaymentGateway gateway;
+    private OneTimePaymentGateway oneTimeGateway;
+    private SubscriptionAccessService accessService;
     private SubscriptionService service;
 
     @BeforeEach
@@ -56,8 +60,10 @@ class SubscriptionServiceTest {
         userRepository = mock(UserRepository.class);
         profileRepository = mock(ProfileRepository.class);
         gateway = mock(SubscriptionPaymentGateway.class);
+        oneTimeGateway = mock(OneTimePaymentGateway.class);
+        accessService = mock(SubscriptionAccessService.class);
         service = new SubscriptionService(subscriptionRepository, planRepository, paymentRepository, eventRepository,
-                userRepository, profileRepository, gateway);
+                userRepository, profileRepository, gateway, oneTimeGateway, accessService);
         when(subscriptionRepository.save(any())).thenAnswer(invocation -> {
             var subscription = invocation.<SubscriptionEntity>getArgument(0);
             if (subscription.getId() == null) subscription.setId(50L);
@@ -65,24 +71,30 @@ class SubscriptionServiceTest {
         });
         when(paymentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(eventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(accessService.synchronize(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
-    void paidPlanRemainsPendingUntilVerifiedCharge() {
+    void successfulOneTimeChargeActivatesThirtyDayAccess() {
         var user = player(Plan.JUGADOR_BASICO, false);
         var plan = plan("JUGADOR_PLUS", "JUGADOR", 1490);
         when(subscriptionRepository.findByIdempotencyKey("key-1")).thenReturn(Optional.empty());
         when(subscriptionRepository.findByUserIdAndStatus(7L, SubscriptionStatus.ACTIVE)).thenReturn(List.of());
         when(userRepository.findById(new UserId(7L))).thenReturn(Optional.of(user));
         when(planRepository.findById("JUGADOR_PLUS")).thenReturn(Optional.of(plan));
-        when(profileRepository.findByUserId(new UserId(7L))).thenReturn(Optional.empty());
-        when(gateway.createSubscription(any())).thenReturn(new ProviderSubscription("cus-1", "crd-1", "sub-1"));
+        var paidAt = LocalDateTime.of(2026, 11, 3, 10, 0);
+        when(oneTimeGateway.charge(any())).thenReturn(
+                new ChargeResult("chr-1", 1490, "PEN", "Exitosa", "venta_exitosa", paidAt,
+                        7L, "JUGADOR_PLUS", "key-1"));
 
         var result = service.create(new UserId(7L), new CreateSubscriptionResource("JUGADOR_PLUS", "tkn-1", true, "key-1"));
 
-        assertThat(result.status()).isEqualTo("PENDING");
-        assertThat(user.getPlan()).isEqualTo(Plan.JUGADOR_BASICO);
-        verify(userRepository, never()).save(any());
+        assertThat(result.status()).isEqualTo("ACTIVE");
+        assertThat(result.paymentMode()).isEqualTo("ONE_TIME");
+        assertThat(result.currentPeriodEnd()).isEqualTo(paidAt.plusDays(30));
+        assertThat(user.getPlan()).isEqualTo(Plan.JUGADOR_PLUS);
+        verify(userRepository).save(any());
+        verify(paymentRepository).save(any());
     }
 
     @Test
@@ -120,6 +132,34 @@ class SubscriptionServiceTest {
 
         verify(subscriptionRepository, never()).findByProviderSubscriptionId(any());
         verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void successfulChargeWebhookReconcilesAnInitiallyFailedResponse() {
+        var user = player(Plan.JUGADOR_BASICO, false);
+        var subscription = subscription(null, SubscriptionStatus.FAILED);
+        subscription.setPaymentMode("ONE_TIME");
+        subscription.setIdempotencyKey("reconcile-key");
+        var occurredAt = LocalDateTime.of(2026, 11, 3, 11, 30);
+        var event = new VerifiedSubscriptionEvent("evt-charge", "charge.creation.succeeded", null, "chr-reconcile",
+                occurredAt, "{}");
+        var charge = new ChargeResult("chr-reconcile", 1490, "PEN", "Exitosa", "venta_exitosa", occurredAt,
+                7L, "JUGADOR_PLUS", "reconcile-key");
+        when(gateway.verifyEvent("evt-charge")).thenReturn(event);
+        when(eventRepository.existsByProviderAndProviderEventId("CULQI", "evt-charge")).thenReturn(false);
+        when(oneTimeGateway.findCharge("chr-reconcile")).thenReturn(charge);
+        when(subscriptionRepository.findByIdempotencyKey("reconcile-key")).thenReturn(Optional.of(subscription));
+        when(planRepository.findById("JUGADOR_PLUS")).thenReturn(Optional.of(plan("JUGADOR_PLUS", "JUGADOR", 1490)));
+        when(paymentRepository.existsByProviderTransactionId("chr-reconcile")).thenReturn(false);
+        when(userRepository.findById(new UserId(7L))).thenReturn(Optional.of(user));
+        when(subscriptionRepository.findByUserIdAndStatus(7L, SubscriptionStatus.ACTIVE)).thenReturn(List.of());
+
+        service.processCulqiEvent("evt-charge");
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(subscription.getCurrentPeriodEnd()).isEqualTo(occurredAt.plusDays(30));
+        assertThat(user.getPlan()).isEqualTo(Plan.JUGADOR_PLUS);
+        verify(eventRepository).save(any());
     }
 
     @Test

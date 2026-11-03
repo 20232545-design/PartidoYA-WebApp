@@ -13,6 +13,9 @@ import com.partidoya.platform.subscriptions.models.SubscriptionStatus;
 import com.partidoya.platform.subscriptions.payments.SubscriptionCreationRequest;
 import com.partidoya.platform.subscriptions.payments.SubscriptionPaymentGateway;
 import com.partidoya.platform.subscriptions.payments.VerifiedSubscriptionEvent;
+import com.partidoya.platform.subscriptions.payments.ChargeRequest;
+import com.partidoya.platform.subscriptions.payments.ChargeResult;
+import com.partidoya.platform.subscriptions.payments.OneTimePaymentGateway;
 import com.partidoya.platform.subscriptions.repositories.ProcessedProviderEventEntity;
 import com.partidoya.platform.subscriptions.repositories.ProcessedProviderEventRepository;
 import com.partidoya.platform.subscriptions.repositories.SubscriptionEntity;
@@ -43,6 +46,8 @@ public class SubscriptionService {
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
     private final SubscriptionPaymentGateway paymentGateway;
+    private final OneTimePaymentGateway oneTimePaymentGateway;
+    private final SubscriptionAccessService subscriptionAccessService;
 
     public SubscriptionService(
             SubscriptionRepository subscriptionRepository,
@@ -51,7 +56,9 @@ public class SubscriptionService {
             ProcessedProviderEventRepository eventRepository,
             UserRepository userRepository,
             ProfileRepository profileRepository,
-            SubscriptionPaymentGateway paymentGateway) {
+            SubscriptionPaymentGateway paymentGateway,
+            OneTimePaymentGateway oneTimePaymentGateway,
+            SubscriptionAccessService subscriptionAccessService) {
         this.subscriptionRepository = subscriptionRepository;
         this.planRepository = planRepository;
         this.paymentRepository = paymentRepository;
@@ -59,6 +66,8 @@ public class SubscriptionService {
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
         this.paymentGateway = paymentGateway;
+        this.oneTimePaymentGateway = oneTimePaymentGateway;
+        this.subscriptionAccessService = subscriptionAccessService;
     }
 
     public SubscriptionResource create(UserId userId, CreateSubscriptionResource resource) {
@@ -70,51 +79,51 @@ public class SubscriptionService {
             }
             return toResource(existing.get());
         }
-        var user = requireUser(userId);
+        var user = subscriptionAccessService.synchronize(requireUser(userId));
         var plan = requirePaidPlan(resource.planCode());
         if (!plan.getRole().equals(user.getRole().name())) {
             throw new ForbiddenActionException("Selected plan is not available for your account type");
         }
         var active = subscriptionRepository.findByUserIdAndStatus(userId.value(), SubscriptionStatus.ACTIVE);
-        if (!active.isEmpty()) {
-            throw new ResourceConflictException("Subscription", "An active subscription already exists");
+        if (active.stream().anyMatch(item -> !"ONE_TIME".equals(item.getPaymentMode()))) {
+            throw new ResourceConflictException("Subscription", "Cancela primero tu suscripción recurrente anterior para evitar cargos duplicados");
         }
 
         var subscription = new SubscriptionEntity();
         subscription.setUserId(userId.value());
         subscription.setPlanCode(plan.getCode());
         subscription.setStatus(SubscriptionStatus.PENDING);
-        subscription.setProvider("CULQI");
+        subscription.setProvider("CULQI_CHARGE");
+        subscription.setPaymentMode("ONE_TIME");
         subscription.setIdempotencyKey(resource.idempotencyKey().trim());
         subscription = subscriptionRepository.save(subscription);
 
-        var profile = profileRepository.findByUserId(userId).orElse(null);
         try {
-            var provider = paymentGateway.createSubscription(new SubscriptionCreationRequest(
+            var charge = oneTimePaymentGateway.charge(new ChargeRequest(
                     userId.value(),
                     user.getEmail().value(),
-                    user.getFirstName(),
-                    user.getLastName(),
-                    profile == null || profile.getPhoneNumber() == null ? null : profile.getPhoneNumber().value(),
-                    profile == null ? null : profile.getDistrict(),
                     plan.getCode(),
+                    plan.getAmountCents(),
+                    plan.getCurrency(),
                     resource.tokenId().trim(),
-                    resource.idempotencyKey().trim()));
-            subscription.setProviderCustomerId(provider.customerId());
-            subscription.setProviderCardId(provider.cardId());
-            subscription.setProviderSubscriptionId(provider.subscriptionId());
+                    resource.idempotencyKey().trim(),
+                    "PartidoYA - " + plan.getDisplayName()));
+            verifyCharge(charge, plan);
+            verifyChargeOwnership(charge, userId, plan.getCode(), resource.idempotencyKey().trim());
+            activateOneTime(subscription, plan, user, active, charge, null);
         } catch (RuntimeException exception) {
             subscription.setStatus(SubscriptionStatus.FAILED);
+            paymentRepository.save(oneTimePayment(subscription, plan, null, SubscriptionPaymentStatus.FAILED,
+                    safeFailureMessage(exception)));
         }
         return toResource(subscriptionRepository.save(subscription));
     }
 
-    @Transactional(readOnly = true)
     public MySubscriptionResource findMine(UserId userId) {
-        var user = requireUser(userId);
-        var subscription = subscriptionRepository.findFirstByUserIdOrderByCreatedAtDesc(userId.value())
-                .map(this::toResource)
-                .orElse(null);
+        var user = subscriptionAccessService.synchronize(requireUser(userId));
+        var entity = subscriptionRepository.findFirstByUserIdOrderByCreatedAtDesc(userId.value()).orElse(null);
+        expireOneTimeIfNeeded(entity, user);
+        var subscription = entity == null ? null : toResource(entity);
         var payments = paymentRepository.findByUserIdOrderByCreatedAtDesc(userId.value()).stream()
                 .map(this::toPaymentResource)
                 .toList();
@@ -128,6 +137,9 @@ public class SubscriptionService {
                 || subscription.getStatus() == SubscriptionStatus.EXPIRED
                 || subscription.getStatus() == SubscriptionStatus.FAILED) {
             return toResource(subscription);
+        }
+        if ("ONE_TIME".equals(subscription.getPaymentMode())) {
+            throw new ResourceConflictException("Subscription", "Los pagos únicos no tienen renovación automática que cancelar");
         }
         if (subscription.getProviderSubscriptionId() != null) {
             paymentGateway.cancelSubscription(subscription.getProviderSubscriptionId());
@@ -144,6 +156,11 @@ public class SubscriptionService {
         }
         var verified = paymentGateway.verifyEvent(eventId.trim());
         if (eventRepository.existsByProviderAndProviderEventId("CULQI", verified.eventId())) {
+            return;
+        }
+        if ("charge.creation.succeeded".equals(verified.type())) {
+            reconcileOneTimeCharge(verified);
+            saveProcessedEvent(verified);
             return;
         }
         if (verified.subscriptionId() == null || verified.subscriptionId().isBlank()) {
@@ -186,6 +203,106 @@ public class SubscriptionService {
         user.activateSubscriptionPlan(Plan.valueOf(plan.getCode()));
         userRepository.save(user);
         paymentRepository.save(payment(subscription, plan, event, SubscriptionPaymentStatus.SUCCEEDED, null));
+    }
+
+    private void activateOneTime(SubscriptionEntity subscription, SubscriptionPlanEntity plan, User user,
+                                 java.util.List<SubscriptionEntity> active, ChargeResult charge, String providerEventId) {
+        var periodStart = charge.occurredAt();
+        var periodBase = active.stream()
+                .filter(item -> "ONE_TIME".equals(item.getPaymentMode()))
+                .map(SubscriptionEntity::getCurrentPeriodEnd)
+                .filter(java.util.Objects::nonNull)
+                .filter(end -> end.isAfter(periodStart))
+                .max(LocalDateTime::compareTo)
+                .orElse(periodStart);
+        active.stream()
+                .filter(item -> "ONE_TIME".equals(item.getPaymentMode()))
+                .forEach(item -> {
+                    item.setStatus(SubscriptionStatus.EXPIRED);
+                    subscriptionRepository.save(item);
+                });
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setCurrentPeriodStart(periodStart);
+        subscription.setCurrentPeriodEnd(periodBase.plusDays(30));
+        subscription.setNextRenewalAt(null);
+        user.activateSubscriptionPlan(Plan.valueOf(plan.getCode()));
+        userRepository.save(user);
+        var payment = oneTimePayment(subscription, plan, charge, SubscriptionPaymentStatus.SUCCEEDED, null);
+        payment.setProviderEventId(providerEventId);
+        paymentRepository.save(payment);
+    }
+
+    private void reconcileOneTimeCharge(VerifiedSubscriptionEvent event) {
+        var charge = oneTimePaymentGateway.findCharge(event.transactionId());
+        if (charge.idempotencyKey() == null || charge.planCode() == null || charge.userId() == null) {
+            throw new IllegalArgumentException("El cargo no contiene los metadatos de conciliación de PartidoYA");
+        }
+        var subscription = subscriptionRepository.findByIdempotencyKey(charge.idempotencyKey())
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription", charge.idempotencyKey()));
+        if (!subscription.getUserId().equals(charge.userId()) || !subscription.getPlanCode().equals(charge.planCode())) {
+            throw new ForbiddenActionException("Los datos del cargo no coinciden con la suscripción");
+        }
+        var plan = requirePaidPlan(subscription.getPlanCode());
+        verifyCharge(charge, plan);
+        if (paymentRepository.existsByProviderTransactionId(charge.chargeId())) return;
+        var user = requireUser(new UserId(subscription.getUserId()));
+        var active = subscriptionRepository.findByUserIdAndStatus(subscription.getUserId(), SubscriptionStatus.ACTIVE);
+        activateOneTime(subscription, plan, user, active, charge, event.eventId());
+        subscriptionRepository.save(subscription);
+    }
+
+    private void verifyCharge(ChargeResult charge, SubscriptionPlanEntity plan) {
+        if (charge == null
+                || charge.chargeId() == null || charge.chargeId().isBlank()
+                || charge.amountCents() != plan.getAmountCents()
+                || !plan.getCurrency().equalsIgnoreCase(charge.currency())
+                || !"Exitosa".equalsIgnoreCase(charge.state())
+                || !"venta_exitosa".equalsIgnoreCase(charge.responseCode())) {
+            throw new IllegalStateException("Culqi no confirmó el cargo con el importe y moneda esperados");
+        }
+    }
+
+    private void verifyChargeOwnership(ChargeResult charge, UserId userId, String planCode, String idempotencyKey) {
+        if (!userId.value().equals(charge.userId())
+                || !planCode.equals(charge.planCode())
+                || !idempotencyKey.equals(charge.idempotencyKey())) {
+            throw new ForbiddenActionException("Los metadatos del cargo no coinciden con la operación solicitada");
+        }
+    }
+
+    private SubscriptionPaymentEntity oneTimePayment(SubscriptionEntity subscription, SubscriptionPlanEntity plan,
+                                                     ChargeResult charge, SubscriptionPaymentStatus status,
+                                                     String failureReason) {
+        var payment = new SubscriptionPaymentEntity();
+        payment.setSubscriptionId(subscription.getId());
+        payment.setUserId(subscription.getUserId());
+        payment.setPlanCode(plan.getCode());
+        payment.setAmountCents(plan.getAmountCents());
+        payment.setCurrency(plan.getCurrency());
+        payment.setStatus(status);
+        payment.setProviderTransactionId(charge == null ? null : charge.chargeId());
+        payment.setPaidAt(status == SubscriptionPaymentStatus.SUCCEEDED && charge != null ? charge.occurredAt() : null);
+        payment.setFailureReason(failureReason);
+        return payment;
+    }
+
+    private void expireOneTimeIfNeeded(SubscriptionEntity subscription, User user) {
+        if (subscription == null || !"ONE_TIME".equals(subscription.getPaymentMode())
+                || subscription.getStatus() != SubscriptionStatus.ACTIVE
+                || subscription.getCurrentPeriodEnd() == null
+                || !subscription.getCurrentPeriodEnd().isBefore(LocalDateTime.now())) {
+            return;
+        }
+        subscription.setStatus(SubscriptionStatus.EXPIRED);
+        subscriptionRepository.save(subscription);
+        downgrade(user);
+    }
+
+    private static String safeFailureMessage(RuntimeException exception) {
+        var message = exception.getMessage() == null || exception.getMessage().isBlank()
+                ? "El pago no pudo completarse"
+                : exception.getMessage();
+        return message.length() > 300 ? message.substring(0, 300) : message;
     }
 
     private void failPayment(SubscriptionEntity subscription, VerifiedSubscriptionEvent event, String reason) {
@@ -264,7 +381,8 @@ public class SubscriptionService {
 
     private SubscriptionResource toResource(SubscriptionEntity entity) {
         return new SubscriptionResource(entity.getId(), entity.getPlanCode(), entity.getStatus().name(),
-                entity.getCurrentPeriodStart(), entity.getCurrentPeriodEnd(), entity.getNextRenewalAt(), entity.getCanceledAt());
+                entity.getPaymentMode(), entity.getCurrentPeriodStart(), entity.getCurrentPeriodEnd(),
+                entity.getNextRenewalAt(), entity.getCanceledAt());
     }
 
     private SubscriptionPaymentResource toPaymentResource(SubscriptionPaymentEntity entity) {

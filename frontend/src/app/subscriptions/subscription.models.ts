@@ -14,6 +14,7 @@ export interface Subscription {
   id: number;
   planCode: string;
   status: 'PENDING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED' | 'FAILED';
+  paymentMode: 'ONE_TIME' | 'RECURRING_LEGACY';
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
   nextRenewalAt: string | null;

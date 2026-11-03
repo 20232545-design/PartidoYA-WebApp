@@ -6,5 +6,6 @@ import java.util.List;
 
 public interface SubscriptionPaymentRepository extends JpaRepository<SubscriptionPaymentEntity, Long> {
     boolean existsByProviderEventId(String providerEventId);
+    boolean existsByProviderTransactionId(String providerTransactionId);
     List<SubscriptionPaymentEntity> findByUserIdOrderByCreatedAtDesc(Long userId);
 }

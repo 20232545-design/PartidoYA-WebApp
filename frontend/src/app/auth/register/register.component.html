@@ -80,12 +80,12 @@
                     @if (plan.amountCents === 0) {
                       <strong>Gratis</strong>
                     } @else {
-                      <strong>S/ {{ (plan.amountCents / 100).toFixed(2) }}</strong><small>/mes</small>
+                      <strong>S/ {{ (plan.amountCents / 100).toFixed(2) }}</strong><small>/30 días</small>
                     }
                   </div>
                   <p>{{ plan.description }}</p>
                   @if (plan.paid && !plan.subscriptionAvailable) {
-                    <span class="availability-note">Suscripción temporalmente no disponible</span>
+                    <span class="availability-note">Pago temporalmente no disponible</span>
                   }
                 </button>
               }

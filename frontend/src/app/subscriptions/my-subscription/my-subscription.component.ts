@@ -36,7 +36,7 @@ export class MySubscriptionComponent implements OnInit {
 
   get availablePlans(): SubscriptionPlan[] {
     const role = this.authService.getRole();
-    return this.plans.filter(plan => plan.role === role && plan.paid && plan.code !== this.data?.currentPlanCode);
+    return this.plans.filter(plan => plan.role === role && plan.paid);
   }
 
   get statusLabel(): string {
@@ -57,14 +57,14 @@ export class MySubscriptionComponent implements OnInit {
     this.errorMessage = '';
     try {
       if (!plan.subscriptionAvailable) throw new Error('Culqi aún no está habilitado para este plan. No se realizó ningún cobro.');
-      const token = await this.paymentService.captureCardToken(`Suscripción ${plan.displayName}`);
+      const token = await this.paymentService.captureCardToken(`Acceso por 30 días - ${plan.displayName}`, plan.amountCents);
       const result = await firstValueFrom(this.subscriptionService.create(plan.code, token));
       this.message = result.status === 'FAILED'
-        ? 'No se pudo iniciar la suscripción. Tu plan anterior no cambió.'
-        : 'La suscripción quedó pendiente. El plan se activará cuando Culqi confirme el cobro.';
+        ? 'No se pudo completar el pago. Tu plan anterior no cambió.'
+        : 'Pago confirmado. Tu acceso se activó por 30 días y no tiene renovación automática.';
       this.load();
     } catch (error: any) {
-      this.errorMessage = error?.error?.message || error?.message || 'No se pudo iniciar la suscripción.';
+      this.errorMessage = error?.error?.message || error?.message || 'No se pudo completar el pago.';
     } finally {
       this.processing = '';
       this.cdr.detectChanges();

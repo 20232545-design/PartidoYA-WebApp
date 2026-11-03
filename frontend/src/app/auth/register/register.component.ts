@@ -111,7 +111,7 @@ export class RegisterComponent implements OnInit {
   get priceLabel(): string {
     if (!this.selectedPlan) return '';
     if (this.selectedPlan.amountCents === 0) return 'Gratis';
-    return `S/ ${(this.selectedPlan.amountCents / 100).toFixed(2)} al mes`;
+    return `S/ ${(this.selectedPlan.amountCents / 100).toFixed(2)} por 30 días`;
   }
 
   selectRole(role: PublicRole): void {
@@ -159,19 +159,21 @@ export class RegisterComponent implements OnInit {
         this.completionMessage = 'Tu plan Básico ya está activo y no tiene costo.';
       } else if (!this.selectedPlan.subscriptionAvailable) {
         this.completionTitle = 'Cuenta creada sin cobros';
-        this.completionMessage = 'Las suscripciones de Culqi aún no están habilitadas. Tu cuenta permanece sin plan pagado.';
+        this.completionMessage = 'Los pagos con Culqi aún no están habilitados. Tu cuenta permanece sin plan pagado.';
       } else {
-        const token = await this.paymentService.captureCardToken(`Suscripción ${this.selectedPlan.displayName}`);
+        const token = await this.paymentService.captureCardToken(
+          `Acceso por 30 días - ${this.selectedPlan.displayName}`,
+          this.selectedPlan.amountCents);
         const subscription = await firstValueFrom(this.subscriptionService.create(this.selectedPlan.code, token));
-        this.completionTitle = subscription.status === 'FAILED' ? 'Cuenta creada sin cobros' : 'Suscripción en validación';
+        this.completionTitle = subscription.status === 'FAILED' ? 'Cuenta creada sin cobros' : 'Plan activado';
         this.completionMessage = subscription.status === 'FAILED'
-          ? 'Culqi no pudo iniciar la suscripción. Tu cuenta permanece en el plan gratuito o sin plan.'
-          : 'Activaremos el plan únicamente cuando Culqi confirme el primer cobro.';
+          ? 'Culqi no pudo completar el pago. Tu cuenta permanece en el plan gratuito o sin plan.'
+          : 'El pago fue confirmado y tienes 30 días de acceso, sin renovación automática.';
       }
     } catch (error: any) {
       if (this.accountCreated) {
         this.completionTitle = 'Cuenta creada sin cobros';
-        this.completionMessage = error?.message || 'No se completó la suscripción. Tu cuenta permanece sin un plan pagado.';
+        this.completionMessage = error?.message || 'No se completó el pago. Tu cuenta permanece sin un plan pagado.';
       } else {
         this.errorMessage = error?.error?.message || 'No pudimos crear la cuenta. Revisa los datos e inténtalo nuevamente.';
       }
