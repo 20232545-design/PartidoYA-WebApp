@@ -1,23 +1,42 @@
-# Validación
+# Validación de la refactorización 2.0
 
-## Línea base
+## Backend
 
-- `npm ci`: completado.
-- `npm run build`: completado con un warning ya existente por el presupuesto de `home.component.scss`.
-- `mvn test`: no disponible inicialmente porque Maven no estaba instalado globalmente.
-- `npm test`: no ejecutable inicialmente porque `angular.json` no tenía target `test`.
+- Maven: `mvn test` completado con 37 pruebas aprobadas.
+- Contexto Spring: iniciado por `DatabaseMigrationIntegrationTest` sin errores de inyección.
+- Flyway: cuatro migraciones validadas y aplicadas sobre H2 desde un esquema vacío.
+- Persistencia: Spring Data detectó ocho repositorios JPA.
+- Pruebas de dominio: estados administrativos, pagos de partidos, solicitudes, disponibilidad de canchas y reportes aprobados.
+- Búsqueda de referencias: no quedan imports a los paquetes anteriores `iam`, `application/internal`, `interfaces/rest`, `domain/model` o `infrastructure/persistence` de los módulos refactorizados.
 
-## Resultado posterior a la refactorización
+## Frontend
 
-- `npm run build`: compilación de producción completada.
-- `npm test`: 3 pruebas Vitest aprobadas para persistencia y limpieza de sesión.
-- `mvn -B test`: 19 pruebas aprobadas, incluidas migraciones Flyway, reglas de dominio, almacenamiento de comprobantes y cálculo de reportes.
-- `npm audit --omit=dev`: 0 vulnerabilidades en dependencias de producción.
-- `git diff --check`: sin errores de whitespace.
-- Comparación visual de `/`: capturas original/refactorizada idénticas por SHA-256 en 1440×1000 y 390×844, con animaciones y video estabilizados en el mismo estado.
+- Producción: `npm run build` completado.
+- Pruebas: `npm test -- --watch=false` completado con 3 pruebas Vitest aprobadas.
+- Dependencias de producción: `npm audit --omit=dev --audit-level=high` informó 0 vulnerabilidades.
+- Rutas: todos los lazy imports resuelven desde la estructura nueva y las URLs públicas permanecen sin cambios.
+- Alias: no quedan referencias a `@core` ni `@features`.
+- Estructura: no quedan carpetas `features`, `pages`, `data-access` o `models` dentro de `src/app`.
 
-## Advertencias conocidas
+## Validación visual
 
-- Angular mantiene un warning de presupuesto: `home.component.scss` pesa aproximadamente 16.44 kB frente al umbral de 12 kB. El archivo conserva los estilos para evitar cambios visuales.
-- `npm audit` informa 16 vulnerabilidades moderadas transitivas de herramientas de desarrollo ligadas a Angular CLI. La corrección automática propuesta es un downgrade mayor incompatible; las dependencias de producción no están afectadas.
-- La integración real con MySQL administrado, Culqi, Google Maps y Render requiere secretos y servicios externos. Se validaron compilación, contexto Spring, migraciones sobre H2 y pruebas automatizadas, no transacciones reales en producción.
+Se capturó la landing antes y después con Chrome headless y el mismo servidor local:
+
+| Resolución | Resultado |
+| --- | --- |
+| 390×844 | Coincidencia exacta SHA-256 |
+| 1440×1000 | 1,434,154 de 1,440,000 píxeles idénticos; los 5,846 distintos están exclusivamente en `y=648..662`, la franja de ticker animada |
+
+Las capturas están en `docs/visual-regression/before` y `docs/visual-regression/after`. No se detectaron diferencias fuera de la animación dependiente del instante de captura.
+
+## Calidad y limpieza
+
+- `git diff --check`: sin errores.
+- No se añadieron comentarios explicativos, `TODO` ni `FIXME`.
+- Se eliminaron interfaces de aplicación con una única implementación y records de comandos/queries que solo delegaban.
+- Se conservaron interfaces de repositorio y almacenamiento que protegen límites de persistencia y archivos.
+
+## Limitaciones
+
+- Angular mantiene el warning existente del presupuesto de estilos de `player-dashboard.component.scss`: 16.44 kB frente al umbral de 12 kB. Reducirlo sin una revisión visual amplia podría alterar el diseño.
+- MySQL administrado, Culqi, Google Maps y Render requieren credenciales y servicios externos. Se validaron compilación, contratos internos, contexto Spring, migraciones H2 y pruebas automatizadas; no se ejecutaron cobros ni despliegues productivos reales.
