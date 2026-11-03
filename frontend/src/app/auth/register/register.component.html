@@ -1,0 +1,232 @@
+<section class="register-page">
+  <div class="register-shell">
+    <header class="register-header">
+      <a routerLink="/" class="brand">PartidoYA</a>
+      <div>
+        <span>¿Ya tienes cuenta?</span>
+        <a routerLink="/login">Inicia sesión</a>
+      </div>
+    </header>
+
+    @if (accountCreated) {
+      <article class="completion-card">
+        <div class="completion-icon">✓</div>
+        <span class="eyebrow">Registro completado</span>
+        <h1>{{ completionTitle }}</h1>
+        <p>{{ completionMessage }}</p>
+        <div class="safe-state">
+          <strong>Tu seguridad primero</strong>
+          <span>Ningún plan pagado se activa sin la confirmación verificada de Culqi.</span>
+        </div>
+        <button type="button" class="primary-button" (click)="goToAccount()">Continuar a mi cuenta</button>
+      </article>
+    } @else {
+      <div class="progress" aria-label="Progreso del registro">
+        @for (item of [1, 2, 3, 4]; track item) {
+          <div class="progress-item" [class.active]="step === item" [class.done]="step > item">
+            <span>{{ step > item ? '✓' : item }}</span>
+            <small>{{ item === 1 ? 'Cuenta' : item === 2 ? 'Plan' : item === 3 ? 'Datos' : 'Confirmar' }}</small>
+          </div>
+        }
+      </div>
+
+      <main class="register-card">
+        @if (errorMessage) {
+          <div class="error-banner">{{ errorMessage }}</div>
+        }
+
+        @if (step === 1) {
+          <div class="step-heading">
+            <span class="eyebrow">Paso 1 de 4</span>
+            <h1>¿Cómo usarás PartidoYA?</h1>
+            <p>Elige el tipo de cuenta. Podrás completar sólo la información relevante para ti.</p>
+          </div>
+          <div class="role-grid">
+            <button type="button" class="role-card" [class.selected]="role === 'JUGADOR'" (click)="selectRole('JUGADOR')">
+              <span class="role-icon">⚽</span>
+              <strong>Soy jugador</strong>
+              <small>Quiero crear, buscar y unirme a partidos.</small>
+              <span class="selection-dot"></span>
+            </button>
+            <button type="button" class="role-card" [class.selected]="role === 'ADMIN_CANCHA'" (click)="selectRole('ADMIN_CANCHA')">
+              <span class="role-icon">▦</span>
+              <strong>Administro canchas</strong>
+              <small>Quiero publicar espacios y organizar reservas.</small>
+              <span class="selection-dot"></span>
+            </button>
+          </div>
+        }
+
+        @if (step === 2) {
+          <div class="step-heading">
+            <span class="eyebrow">Paso 2 de 4</span>
+            <h1>Elige tu plan</h1>
+            <p>Los precios vienen del catálogo oficial de PartidoYA. No realizaremos ningún cobro en este paso.</p>
+          </div>
+          @if (loadingPlans) {
+            <p class="loading-state">Cargando planes...</p>
+          } @else {
+            <div class="plan-grid">
+              @for (plan of rolePlans; track plan.code) {
+                <button type="button" class="plan-card" [class.selected]="selectedPlanCode === plan.code" (click)="selectPlan(plan.code)">
+                  <div class="plan-title">
+                    <div>
+                      <span>{{ role === 'JUGADOR' ? 'Jugador' : 'Cancha' }}</span>
+                      <strong>{{ plan.displayName }}</strong>
+                    </div>
+                    <span class="selection-dot"></span>
+                  </div>
+                  <div class="plan-price">
+                    @if (plan.amountCents === 0) {
+                      <strong>Gratis</strong>
+                    } @else {
+                      <strong>S/ {{ (plan.amountCents / 100).toFixed(2) }}</strong><small>/mes</small>
+                    }
+                  </div>
+                  <p>{{ plan.description }}</p>
+                  @if (plan.paid && !plan.subscriptionAvailable) {
+                    <span class="availability-note">Suscripción temporalmente no disponible</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+        }
+
+        @if (step === 3) {
+          <div class="step-heading">
+            <span class="eyebrow">Paso 3 de 4</span>
+            <h1>Completa tus datos</h1>
+            <p>Usamos esta información para tu cuenta y para personalizar tu experiencia deportiva.</p>
+          </div>
+          <form class="data-form" [formGroup]="form">
+            <div class="form-section">
+              <h2>Datos personales</h2>
+              <div class="form-grid">
+                <label>Nombre<input type="text" formControlName="firstName" autocomplete="given-name"></label>
+                <label>Apellidos<input type="text" formControlName="lastName" autocomplete="family-name"></label>
+                <label>Correo electrónico<input type="email" formControlName="email" autocomplete="email"></label>
+                <label>Celular peruano<input type="tel" formControlName="phone" placeholder="+51987654321" autocomplete="tel"></label>
+                <label>Distrito
+                  <select formControlName="district">
+                    <option value="">Selecciona tu distrito</option>
+                    @for (district of districts; track district) { <option [value]="district">{{ district }}</option> }
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h2>Seguridad</h2>
+              <div class="form-grid">
+                <label>Contraseña
+                  <span class="password-field">
+                    <input [type]="showPassword ? 'text' : 'password'" formControlName="password" autocomplete="new-password">
+                    <button type="button" (click)="showPassword = !showPassword">{{ showPassword ? 'Ocultar' : 'Ver' }}</button>
+                  </span>
+                </label>
+                <label>Confirmar contraseña<input [type]="showPassword ? 'text' : 'password'" formControlName="confirmPassword" autocomplete="new-password"></label>
+              </div>
+              <div class="strength" [attr.data-score]="passwordStrength">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <small>10 caracteres como mínimo, con mayúscula, minúscula, número y símbolo.</small>
+              @if (form.controls.confirmPassword.touched && !passwordsMatch) {
+                <p class="field-error">Las contraseñas no coinciden.</p>
+              }
+            </div>
+
+            @if (role === 'JUGADOR') {
+              <div class="form-section">
+                <h2>Perfil deportivo</h2>
+                <div class="form-grid">
+                  <label>Deporte principal
+                    <select formControlName="primarySport">
+                      <option value="">Selecciona un deporte</option>
+                      @for (sport of sports; track sport) { <option [value]="sport">{{ sport }}</option> }
+                    </select>
+                  </label>
+                  <label>Nivel
+                    <select formControlName="skillLevel">
+                      <option value="">Selecciona tu nivel</option>
+                      @for (level of skillLevels; track level.value) { <option [value]="level.value">{{ level.label }}</option> }
+                    </select>
+                  </label>
+                </div>
+                <div class="availability">
+                  <span>¿Cuándo sueles jugar?</span>
+                  @for (slot of timeSlots; track slot.value) {
+                    <button type="button" [class.selected]="availability.has(slot.value)" (click)="toggleAvailability(slot.value)">{{ slot.label }}</button>
+                  }
+                </div>
+              </div>
+            } @else {
+              <div class="form-section">
+                <h2>Datos del negocio</h2>
+                <div class="form-grid">
+                  <label>Nombre comercial<input type="text" formControlName="businessName" autocomplete="organization"></label>
+                  <label>Teléfono del negocio<input type="tel" formControlName="businessPhone" placeholder="+51987654321"></label>
+                  <label>Distrito de operación
+                    <select formControlName="operationDistrict">
+                      <option value="">Selecciona un distrito</option>
+                      @for (district of districts; track district) { <option [value]="district">{{ district }}</option> }
+                    </select>
+                  </label>
+                </div>
+              </div>
+            }
+
+            <div class="consents">
+              <label><input type="checkbox" formControlName="termsAccepted"> Acepto los términos y condiciones.</label>
+              <label><input type="checkbox" formControlName="privacyAccepted"> Acepto la política de privacidad.</label>
+              <label><input type="checkbox" formControlName="marketingConsent"> Quiero recibir novedades y promociones.</label>
+            </div>
+          </form>
+        }
+
+        @if (step === 4) {
+          <div class="step-heading">
+            <span class="eyebrow">Paso 4 de 4</span>
+            <h1>Confirma tu registro</h1>
+            <p>Revisa la información antes de crear tu cuenta.</p>
+          </div>
+          <div class="confirmation-grid">
+            <section>
+              <span>Tipo de cuenta</span><strong>{{ role === 'JUGADOR' ? 'Jugador' : 'Administrador de cancha' }}</strong>
+            </section>
+            <section>
+              <span>Plan elegido</span><strong>{{ selectedPlan?.displayName }}</strong><small>{{ priceLabel }}</small>
+            </section>
+            <section>
+              <span>Titular</span><strong>{{ form.controls.firstName.value }} {{ form.controls.lastName.value }}</strong><small>{{ form.controls.email.value }}</small>
+            </section>
+            <section>
+              <span>Ubicación</span><strong>{{ form.controls.district.value }}</strong><small>{{ form.controls.phone.value }}</small>
+            </section>
+          </div>
+          @if (selectedPlan?.paid) {
+            <div class="payment-explanation">
+              <strong>Validación segura con Culqi</strong>
+              <p>Al crear la cuenta se abrirá Culqi para guardar la tarjeta con un monto de S/ 0.00. Tu plan seguirá inactivo hasta recibir la confirmación verificada del primer cobro.</p>
+            </div>
+          }
+        }
+
+        <footer class="step-actions">
+          @if (step > 1) {
+            <button type="button" class="secondary-button" (click)="previous()" [disabled]="submitting">Atrás</button>
+          } @else {
+            <span></span>
+          }
+          @if (step < 4) {
+            <button type="button" class="primary-button" (click)="next()">Continuar</button>
+          } @else {
+            <button type="button" class="primary-button" (click)="submit()" [disabled]="submitting">
+              {{ submitting ? 'Creando cuenta...' : 'Crear cuenta' }}
+            </button>
+          }
+        </footer>
+      </main>
+    }
+  </div>
+</section>

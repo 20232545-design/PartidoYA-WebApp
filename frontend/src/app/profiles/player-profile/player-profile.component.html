@@ -3,7 +3,7 @@
     <div class="page-header">
       <span>Cuenta</span>
       <h1>Mi perfil</h1>
-      <p>Actualiza tus datos personales, plan y preferencias deportivas.</p>
+      <p>Actualiza tus datos personales y preferencias deportivas.</p>
     </div>
 
     @if (loading) {
@@ -70,25 +70,30 @@
                 <label>Tipo de cuenta</label>
                 <input type="text" [value]="roleLabel" disabled>
               </div>
+              <div class="form-group">
+                <label for="phoneNumber">Celular</label>
+                <input id="phoneNumber" type="tel" name="phoneNumber" [(ngModel)]="phoneNumber" placeholder="+51987654321">
+              </div>
+              <div class="form-group">
+                <label for="district">Distrito</label>
+                <select id="district" name="district" [(ngModel)]="district">
+                  <option value="">Selecciona tu distrito</option>
+                  @for (item of districts; track item) { <option [value]="item">{{ item }}</option> }
+                </select>
+              </div>
             </div>
           </section>
 
           <section class="form-section">
             <div class="section-title">
-              <h3>Plan</h3>
-              <p>Selecciona el plan asociado a tu tipo de cuenta.</p>
+              <h3>Suscripción</h3>
+              <p>Los planes se gestionan de forma segura y no pueden cambiarse desde el perfil.</p>
             </div>
 
-            <div class="form-group">
-              <label for="plan">Plan</label>
-              <select id="plan" name="plan" [(ngModel)]="plan">
-                @for (p of availablePlans; track p.value) {
-                  <option [value]="p.value">{{ p.label }}</option>
-                }
-              </select>
-            </div>
+            <a routerLink="/mi-suscripcion" class="btn-submit">Ver mi suscripción</a>
           </section>
 
+          @if (role === 'JUGADOR') {
           <section class="form-section">
             <div class="section-title">
               <h3>Preferencias deportivas</h3>
@@ -133,6 +138,31 @@
               </div>
             </div>
           </section>
+          } @else {
+            <section class="form-section">
+              <div class="section-title">
+                <h3>Datos del negocio</h3>
+                <p>Información operativa de tu cancha o complejo deportivo.</p>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="businessName">Nombre comercial</label>
+                  <input id="businessName" type="text" name="businessName" [(ngModel)]="businessName">
+                </div>
+                <div class="form-group">
+                  <label for="businessPhone">Teléfono del negocio</label>
+                  <input id="businessPhone" type="tel" name="businessPhone" [(ngModel)]="businessPhone" placeholder="+51987654321">
+                </div>
+                <div class="form-group">
+                  <label for="operationDistrict">Distrito de operación</label>
+                  <select id="operationDistrict" name="operationDistrict" [(ngModel)]="operationDistrict">
+                    <option value="">Selecciona un distrito</option>
+                    @for (item of districts; track item) { <option [value]="item">{{ item }}</option> }
+                  </select>
+                </div>
+              </div>
+            </section>
+          }
 
           <div class="form-actions">
             <button type="submit" class="btn-submit" [disabled]="saving">

@@ -41,12 +41,15 @@
                 <a routerLink="/admin-canchas" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Administrar canchas</a>
                 <a routerLink="/calendar" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Calendario</a>
                 <a routerLink="/availability" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Disponibilidad</a>
-                <a routerLink="/reports" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Reportes</a>
+                @if (canViewCourtReports) {
+                  <a routerLink="/reports" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Reportes</a>
+                }
               }
               @if (canManagePlatform) {
                 <a routerLink="/admin-users" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Gestion de usuarios</a>
               }
               <a routerLink="/mi-perfil" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mi perfil</a>
+              <a routerLink="/mi-suscripcion" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mi suscripción</a>
               <button type="button" class="dropdown-item" role="menuitem" (click)="logout()">Cerrar sesión</button>
             </div>
           }

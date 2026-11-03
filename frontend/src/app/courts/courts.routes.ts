@@ -1,4 +1,4 @@
-import { courtAdminGuard, playerGuard } from '@app/auth/plan.guard';
+import { courtAdminGuard, courtBusinessGuard, playerGuard } from '@app/auth/plan.guard';
 import { Routes } from '@angular/router';
 
 export const courtRoutes: Routes = [
@@ -29,7 +29,7 @@ export const courtRoutes: Routes = [
   },
   {
     path: 'reports',
-    canActivate: [courtAdminGuard],
+    canActivate: [courtBusinessGuard],
     loadComponent: () => import('./reports/reports.component').then(module => module.ReportsComponent)
   }
 ];

@@ -59,6 +59,10 @@ export class NavbarComponent implements OnInit, DoCheck {
     return this.authService.isPlayerPlan();
   }
 
+  get canViewCourtReports(): boolean {
+    return this.authService.isCourtBusiness();
+  }
+
   get canManagePlatform(): boolean {
     return this.authService.isPlatformAdmin();
   }

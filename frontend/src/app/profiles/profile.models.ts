@@ -12,4 +12,8 @@ export interface ProfileResponse {
   skillLevel: string | null;
   availability: string[];
   sportPreferences: SportPreferenceResponse[];
+  district: string | null;
+  businessName: string | null;
+  businessPhone: string | null;
+  operationDistrict: string | null;
 }

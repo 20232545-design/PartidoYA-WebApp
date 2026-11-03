@@ -19,4 +19,6 @@ export const playerGuard: CanActivateFn = () => authorize(authService => authSer
 
 export const courtAdminGuard: CanActivateFn = () => authorize(authService => authService.isCourtPlan());
 
+export const courtBusinessGuard: CanActivateFn = () => authorize(authService => authService.isCourtBusiness());
+
 export const platformAdminGuard: CanActivateFn = () => authorize(authService => authService.isPlatformAdmin());

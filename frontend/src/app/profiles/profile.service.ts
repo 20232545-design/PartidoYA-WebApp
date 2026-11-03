@@ -28,7 +28,16 @@ export class ProfileService {
     return this.http.patch<{ id: number; email: string; fullName: string; emailVerified: boolean; role: string; plan: string }>(`${this.apiUrl}/users/${userId}`, { fullName });
   }
 
-  updatePlan(userId: number, plan: string): Observable<{ id: number; email: string; fullName: string; emailVerified: boolean; role: string; plan: string }> {
-    return this.http.patch<{ id: number; email: string; fullName: string; emailVerified: boolean; role: string; plan: string }>(`${this.apiUrl}/users/${userId}/plan`, { plan });
+  updateProfile(userId: number, profile: {
+    phoneNumber: string;
+    district: string;
+    primarySport: string | null;
+    skillLevel: string | null;
+    availability: string[];
+    businessName: string | null;
+    businessPhone: string | null;
+    operationDistrict: string | null;
+  }): Observable<ProfileResponse> {
+    return this.http.patch<ProfileResponse>(`${this.apiUrl}/profiles/user/${userId}`, profile);
   }
 }

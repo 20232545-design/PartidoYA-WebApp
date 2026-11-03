@@ -7,20 +7,20 @@
     </div>
 
     <div class="plans-grid">
-      @for (plan of plans; track plan.name) {
-        <article class="plan-card" [class.featured]="plan.featured">
-          @if (plan.featured) {
+      @for (plan of plans; track plan.code) {
+        <article class="plan-card" [class.featured]="plan.code === 'JUGADOR_PLUS'">
+          @if (plan.code === 'JUGADOR_PLUS') {
             <span class="badge">Popular</span>
           }
-          <h2>{{ plan.name }}</h2>
-          <div class="price">{{ plan.price }} <span>por mes</span></div>
+          <h2>Jugador {{ plan.displayName }}</h2>
+          <div class="price">{{ plan.amountCents === 0 ? 'Gratis' : 'S/ ' + (plan.amountCents / 100).toFixed(2) }} <span>{{ plan.amountCents === 0 ? 'para siempre' : 'por mes' }}</span></div>
           <p>{{ plan.description }}</p>
           <ul>
-            @for (benefit of plan.benefits; track benefit) {
+            @for (benefit of benefits(plan.code); track benefit) {
               <li>{{ benefit }}</li>
             }
           </ul>
-          <a routerLink="/register" class="plan-cta">{{ plan.cta }}</a>
+          <a routerLink="/register" [queryParams]="{ role: 'JUGADOR', plan: plan.code }" class="plan-cta">{{ plan.amountCents === 0 ? 'Comenzar gratis' : 'Elegir Plus' }}</a>
         </article>
       }
     </div>

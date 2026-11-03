@@ -1,14 +1,7 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
-
-interface PlanCard {
-  name: string;
-  price: string;
-  description: string;
-  cta: string;
-  featured?: boolean;
-  benefits: string[];
-}
+import { SubscriptionPlan } from '@app/subscriptions/subscription.models';
+import { SubscriptionService } from '@app/subscriptions/subscription.service';
 
 @Component({
   selector: 'app-player-plans',
@@ -16,36 +9,21 @@ interface PlanCard {
   templateUrl: './player-plans.component.html',
   styleUrl: './player-plans.component.scss'
 })
-export class PlayerPlansComponent {
-  readonly plans: PlanCard[] = [
-    {
-      name: 'Jugador Básico',
-      price: 'S/ 7.90',
-      description: 'Para deportistas casuales que buscan partidos ocasionales.',
-      cta: 'Comenzar',
-      benefits: [
-        'Creación de perfil deportivo',
-        'Selección de deportes favoritos',
-        'Búsqueda y creación de partidos',
-        'Filtros por deporte, fecha y ubicación',
-        'Unión a partidos disponibles',
-        'Notificaciones básicas'
-      ]
-    },
-    {
-      name: 'Jugador Plus',
-      price: 'S/ 14.90',
-      description: 'Para deportistas frecuentes que juegan varias veces al mes.',
-      cta: 'Elegir Plus',
-      featured: true,
-      benefits: [
-        'Todo lo del Básico',
-        'Filtros avanzados por nivel y distancia',
-        'Prioridad en cupos',
-        'Historial de partidos',
-        'Reputación de jugadores',
-        'Notificaciones personalizadas'
-      ]
-    }
-  ];
+export class PlayerPlansComponent implements OnInit {
+  plans: SubscriptionPlan[] = [];
+
+  constructor(private subscriptionService: SubscriptionService, private cdr: ChangeDetectorRef) {}
+
+  ngOnInit(): void {
+    this.subscriptionService.getPlans().subscribe(plans => {
+      this.plans = plans.filter(plan => plan.role === 'JUGADOR');
+      this.cdr.detectChanges();
+    });
+  }
+
+  benefits(code: string): string[] {
+    return code === 'JUGADOR_PLUS'
+      ? ['Todo lo del plan Básico', 'Insignia Plus en tu cuenta', 'Gestión de renovación', 'Historial de pagos verificados']
+      : ['Perfil deportivo', 'Búsqueda y creación de partidos', 'Unión a partidos disponibles', 'Notificaciones de actividad'];
+  }
 }

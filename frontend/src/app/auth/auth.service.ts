@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { API_BASE_URL } from '@shared/services/api-base-url.token';
-import { AuthResponse, UserResponse } from './auth.models';
+import { AuthResponse, RegistrationRequest, UserResponse } from './auth.models';
 import { BrowserSessionStore } from './browser-session.store';
 
 export type { AuthResponse, UserResponse } from './auth.models';
@@ -16,13 +16,8 @@ export class AuthService {
     private sessionStore: BrowserSessionStore
   ) {}
 
-  register(fullName: string, email: string, password: string, role: string): Observable<UserResponse> {
-    return this.http.post<UserResponse>(`${this.apiUrl}/auth/register`, {
-      fullName,
-      email,
-      password,
-      role
-    });
+  register(request: RegistrationRequest): Observable<UserResponse> {
+    return this.http.post<UserResponse>(`${this.apiUrl}/auth/register`, request);
   }
 
   login(email: string, password: string): Observable<AuthResponse> {
@@ -72,16 +67,16 @@ export class AuthService {
     return this.getRole() === 'ADMIN_CANCHA' && (plan === 'CANCHA_EMPRENDEDOR' || plan === 'CANCHA_BUSINESS');
   }
 
+  isCourtBusiness(): boolean {
+    return this.getRole() === 'ADMIN_CANCHA' && this.getPlan() === 'CANCHA_BUSINESS';
+  }
+
   isPlatformAdmin(): boolean {
     return this.getRole() === 'ADMIN_GENERAL' && this.getPlan() === 'ADMIN_GENERAL';
   }
 
   dashboardRoute(): string {
     return '/home';
-  }
-
-  setPlan(plan: string): void {
-    this.sessionStore.updatePlan(plan);
   }
 
   isAdminCancha(): boolean {

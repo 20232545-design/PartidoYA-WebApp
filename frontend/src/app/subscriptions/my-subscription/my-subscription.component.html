@@ -1,0 +1,93 @@
+<section class="subscription-page">
+  <div class="container subscription-container">
+    <header class="page-heading">
+      <span>Cuenta y facturación</span>
+      <h1>Mi suscripción</h1>
+      <p>Consulta el estado real de tu plan, las próximas fechas y los pagos confirmados por Culqi.</p>
+    </header>
+
+    @if (message) { <div class="message success">{{ message }}</div> }
+    @if (errorMessage) { <div class="message error">{{ errorMessage }}</div> }
+
+    @if (loading) {
+      <div class="loading-card">Cargando tu suscripción...</div>
+    } @else if (data) {
+      <div class="summary-grid">
+        <article class="plan-summary">
+          <div class="summary-top">
+            <div>
+              <span>Plan actual</span>
+              <h2>{{ currentPlan?.displayName || (data.currentPlanCode === 'CANCHA_SIN_PLAN' ? 'Sin plan comercial' : data.currentPlanCode) }}</h2>
+            </div>
+            <span class="status" [attr.data-status]="data.subscription?.status || (data.legacyAccess ? 'LEGACY' : 'NONE')">{{ statusLabel }}</span>
+          </div>
+          @if (currentPlan) {
+            <p>{{ currentPlan.description }}</p>
+            <strong class="price">{{ currentPlan.amountCents === 0 ? 'Gratis' : formatAmount(currentPlan.amountCents) + ' al mes' }}</strong>
+          }
+          @if (data.legacyAccess) {
+            <div class="legacy-note">Este acceso histórico se conserva sin generar cargos retroactivos.</div>
+          }
+          @if (data.subscription?.status === 'ACTIVE' || data.subscription?.status === 'PENDING' || data.subscription?.status === 'PAST_DUE') {
+            <button type="button" class="cancel-button" (click)="cancel()" [disabled]="processing === 'cancel'">
+              {{ processing === 'cancel' ? 'Cancelando...' : 'Cancelar suscripción' }}
+            </button>
+          }
+        </article>
+
+        <article class="dates-card">
+          <h2>Estado de renovación</h2>
+          <dl>
+            <div><dt>Estado</dt><dd>{{ statusLabel }}</dd></div>
+            <div><dt>Próxima renovación</dt><dd>{{ data.subscription?.nextRenewalAt ? (data.subscription?.nextRenewalAt | date:'dd/MM/yyyy') : 'No programada' }}</dd></div>
+            <div><dt>Fin del periodo</dt><dd>{{ data.subscription?.currentPeriodEnd ? (data.subscription?.currentPeriodEnd | date:'dd/MM/yyyy') : 'No disponible' }}</dd></div>
+          </dl>
+          <small>Las fechas aparecen sólo después de un cobro verificado.</small>
+        </article>
+      </div>
+
+      @if (availablePlans.length && data.subscription?.status !== 'ACTIVE' && data.subscription?.status !== 'PENDING') {
+        <section class="available-section">
+          <div>
+            <span>Opciones disponibles</span>
+            <h2>Elige un plan pagado</h2>
+          </div>
+          <div class="available-grid">
+            @for (plan of availablePlans; track plan.code) {
+              <article>
+                <h3>{{ plan.displayName }}</h3>
+                <strong>{{ formatAmount(plan.amountCents) }} <small>/mes</small></strong>
+                <p>{{ plan.description }}</p>
+                <button type="button" (click)="subscribe(plan)" [disabled]="processing !== '' || !plan.subscriptionAvailable">
+                  {{ processing === plan.code ? 'Abriendo Culqi...' : plan.subscriptionAvailable ? 'Suscribirme' : 'No disponible' }}
+                </button>
+              </article>
+            }
+          </div>
+        </section>
+      }
+
+      <section class="payments-section">
+        <div>
+          <span>Movimientos</span>
+          <h2>Historial de pagos</h2>
+        </div>
+        @if (data.payments.length === 0) {
+          <div class="empty-state">Todavía no existen pagos confirmados para esta cuenta.</div>
+        } @else {
+          <div class="payment-list">
+            @for (payment of data.payments; track payment.id) {
+              <div class="payment-row">
+                <div><strong>{{ payment.planCode }}</strong><small>{{ payment.paidAt ? (payment.paidAt | date:'dd/MM/yyyy HH:mm') : 'Intento no completado' }}</small></div>
+                <span [class.failed]="payment.status === 'FAILED'">{{ payment.status === 'SUCCEEDED' ? 'Pagado' : 'Fallido' }}</span>
+                <strong>{{ formatAmount(payment.amountCents) }}</strong>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <a routerLink="/mi-perfil" class="profile-link">Volver a mi perfil</a>
+    }
+  </div>
+</section>

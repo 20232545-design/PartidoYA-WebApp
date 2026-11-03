@@ -1,13 +1,14 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ProfileService } from '@app/profiles/profile.service';
 import { AuthService } from '@app/auth/auth.service';
 
 @Component({
   selector: 'app-player-profile',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './player-profile.component.html',
   styleUrl: './player-profile.component.scss'
 })
@@ -18,6 +19,11 @@ export class PlayerProfileComponent implements OnInit {
   availability: string[] = [];
   role = '';
   plan = '';
+  phoneNumber = '';
+  district = '';
+  businessName = '';
+  businessPhone = '';
+  operationDistrict = '';
   loading = true;
   saving = false;
   nameInvalid = false;
@@ -25,6 +31,7 @@ export class PlayerProfileComponent implements OnInit {
   successMessage = '';
 
   readonly sports = ['Fútbol', 'Básquet', 'Voleibol', 'Tenis'];
+  readonly districts = ['Barranco', 'Jesús María', 'La Molina', 'Lince', 'Miraflores', 'San Borja', 'San Isidro', 'San Miguel', 'Santiago de Surco'];
 
   readonly skillLevels = [
     { value: 'BEGINNER', label: 'Básico' },
@@ -44,6 +51,7 @@ export class PlayerProfileComponent implements OnInit {
       { value: 'JUGADOR_PLUS', label: 'Plus' }
     ],
     ADMIN_CANCHA: [
+      { value: 'CANCHA_SIN_PLAN', label: 'Sin plan comercial' },
       { value: 'CANCHA_EMPRENDEDOR', label: 'Cancha Emprendedor' },
       { value: 'CANCHA_BUSINESS', label: 'Cancha Business' }
     ]
@@ -69,6 +77,11 @@ export class PlayerProfileComponent implements OnInit {
         this.primarySport = profile.primarySport || '';
         this.skillLevel = profile.skillLevel || '';
         this.availability = profile.availability || [];
+        this.phoneNumber = profile.phoneNumber || '';
+        this.district = profile.district || '';
+        this.businessName = profile.businessName || '';
+        this.businessPhone = profile.businessPhone || '';
+        this.operationDistrict = profile.operationDistrict || '';
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -119,19 +132,21 @@ export class PlayerProfileComponent implements OnInit {
     this.saving = true;
     const requests = {
       fullName: this.profileService.updateFullName(userId, this.fullName.trim()),
-      plan: this.profileService.updatePlan(userId, this.plan),
-      ...(this.primarySport
-        ? { primarySport: this.profileService.updatePrimarySport(userId, this.primarySport) }
-        : {}),
-      ...(this.skillLevel
-        ? { gamePreferences: this.profileService.updateGamePreferences(userId, this.skillLevel, this.availability) }
-        : {})
+      profile: this.profileService.updateProfile(userId, {
+        phoneNumber: this.phoneNumber,
+        district: this.district,
+        primarySport: this.role === 'JUGADOR' ? this.primarySport || null : null,
+        skillLevel: this.role === 'JUGADOR' ? this.skillLevel || null : null,
+        availability: this.role === 'JUGADOR' ? this.availability : [],
+        businessName: this.role === 'ADMIN_CANCHA' ? this.businessName : null,
+        businessPhone: this.role === 'ADMIN_CANCHA' ? this.businessPhone : null,
+        operationDistrict: this.role === 'ADMIN_CANCHA' ? this.operationDistrict : null
+      })
     };
 
     forkJoin(requests).subscribe({
       next: (result) => {
         localStorage.setItem('userName', result.fullName.fullName);
-        this.authService.setPlan(result.plan.plan);
         this.saving = false;
         this.successMessage = 'Perfil actualizado correctamente.';
         this.cdr.detectChanges();

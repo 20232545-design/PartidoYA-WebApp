@@ -19,3 +19,23 @@ export interface UserResponse {
   suspendedUntil?: string | null;
   lastAdministrativeActionAt?: string | null;
 }
+
+export interface RegistrationRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+  role: 'JUGADOR' | 'ADMIN_CANCHA';
+  planCode: string;
+  phone: string;
+  district: string;
+  primarySport: string | null;
+  skillLevel: string | null;
+  availability: string[];
+  businessName: string | null;
+  businessPhone: string | null;
+  operationDistrict: string | null;
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
+  marketingConsent: boolean;
+}

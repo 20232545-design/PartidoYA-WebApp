@@ -140,6 +140,9 @@ h2 {
   color: #0a0f1a;
   font-size: 0.95rem;
   font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .login-panel .btn-submit {

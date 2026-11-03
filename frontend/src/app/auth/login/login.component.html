@@ -1,13 +1,10 @@
 <section class="auth-page">
   <div class="auth-shell">
     <article class="auth-panel login-panel">
-      <span class="auth-kicker">Acceso</span>
+      <span class="auth-kicker">Acceso seguro</span>
       <h1>Iniciar sesión</h1>
-      <p class="auth-subtitle">Bienvenido de vuelta a PartidoYA</p>
+      <p class="auth-subtitle">Vuelve a tus partidos, canchas y reservas.</p>
 
-      @if (registerSuccessMessage) {
-        <div class="success-message">{{ registerSuccessMessage }}</div>
-      }
       @if (errorMessage) {
         <div class="error-message">{{ errorMessage }}</div>
       }
@@ -15,59 +12,23 @@
       <form class="auth-form" (submit)="onSubmit($event)">
         <div class="form-group">
           <label for="email">Correo electrónico</label>
-          <input id="email" type="email" [(ngModel)]="email" name="email" placeholder="tu@correo.com" required>
+          <input id="email" type="email" [(ngModel)]="email" name="email" autocomplete="email" placeholder="tu@correo.com" required>
         </div>
         <div class="form-group">
           <label for="password">Contraseña</label>
-          <input id="password" type="password" [(ngModel)]="password" name="password" placeholder="Tu contraseña" required>
+          <input id="password" type="password" [(ngModel)]="password" name="password" autocomplete="current-password" placeholder="Tu contraseña" required>
         </div>
         <button type="submit" class="btn-submit">Ingresar</button>
       </form>
     </article>
 
     <article class="auth-panel register-panel">
-      @if (!showRegister) {
-        <div class="register-invite">
-          <span class="auth-kicker">Nuevo equipo</span>
-          <h2>¿No tienes una cuenta?</h2>
-          <p>Crea tu perfil, elige tu tipo de usuario y empieza a organizar o encontrar partidos.</p>
-          <button type="button" class="btn-register" (click)="showRegisterForm()">Regístrate</button>
-        </div>
-      } @else {
-        <div class="register-form-wrap">
-          <span class="auth-kicker">Registro</span>
-          <h2>Crear cuenta</h2>
-          <p>Únete a la comunidad deportiva.</p>
-
-          @if (registerErrorMessage) {
-            <div class="error-message">{{ registerErrorMessage }}</div>
-          }
-
-          <form class="auth-form" (submit)="onRegisterSubmit($event)">
-            <div class="form-group">
-              <label for="fullName">Nombre completo</label>
-              <input id="fullName" type="text" [(ngModel)]="fullName" name="fullName" placeholder="Ingresa tu nombre completo" required>
-            </div>
-            <div class="form-group">
-              <label for="registerEmail">Correo electrónico</label>
-              <input id="registerEmail" type="email" [(ngModel)]="registerEmail" name="registerEmail" placeholder="tu@correo.com" required>
-            </div>
-            <div class="form-group">
-              <label for="registerPassword">Contraseña</label>
-              <input id="registerPassword" type="password" [(ngModel)]="registerPassword" name="registerPassword" placeholder="Mínimo 8 caracteres" required>
-            </div>
-            <div class="form-group">
-              <label for="role">Tipo de cuenta</label>
-              <select id="role" [(ngModel)]="role" name="role" required>
-                <option value="JUGADOR">Jugador</option>
-                <option value="ADMIN_CANCHA">Administrador de cancha</option>
-              </select>
-            </div>
-            <button type="submit" class="btn-submit">Registrarme</button>
-            <button type="button" class="btn-text" (click)="showLoginForm()">Ya tengo cuenta</button>
-          </form>
-        </div>
-      }
+      <div class="register-invite">
+        <span class="auth-kicker">Tu próxima fecha empieza aquí</span>
+        <h2>¿Aún no tienes cuenta?</h2>
+        <p>Crea tu perfil como jugador o administra tu cancha con un proceso guiado y transparente.</p>
+        <a routerLink="/register" class="btn-register">Crear mi cuenta</a>
+      </div>
     </article>
   </div>
 </section>

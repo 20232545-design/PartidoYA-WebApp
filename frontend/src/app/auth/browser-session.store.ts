@@ -29,6 +29,10 @@ export class BrowserSessionStore {
     return this.read(SESSION_KEYS.token) !== null;
   }
 
+  token(): string | null {
+    return this.read(SESSION_KEYS.token);
+  }
+
   userId(): number | null {
     const storedUserId = this.read(SESSION_KEYS.userId);
     if (storedUserId === null) return null;

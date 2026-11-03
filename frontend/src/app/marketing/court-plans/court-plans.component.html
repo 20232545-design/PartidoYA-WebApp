@@ -7,20 +7,20 @@
     </div>
 
     <div class="plans-grid">
-      @for (plan of plans; track plan.name) {
-        <article class="plan-card" [class.featured]="plan.featured">
-          @if (plan.featured) {
+      @for (plan of plans; track plan.code) {
+        <article class="plan-card" [class.featured]="plan.code === 'CANCHA_BUSINESS'">
+          @if (plan.code === 'CANCHA_BUSINESS') {
             <span class="badge">Recomendado</span>
           }
-          <h2>{{ plan.name }}</h2>
-          <div class="price">{{ plan.price }} <span>por mes</span></div>
+          <h2>Cancha {{ plan.displayName }}</h2>
+          <div class="price">S/ {{ (plan.amountCents / 100).toFixed(2) }} <span>por mes</span></div>
           <p>{{ plan.description }}</p>
           <ul>
-            @for (benefit of plan.benefits; track benefit) {
+            @for (benefit of benefits(plan.code); track benefit) {
               <li>{{ benefit }}</li>
             }
           </ul>
-          <a routerLink="/register" class="plan-cta">{{ plan.cta }}</a>
+          <a routerLink="/register" [queryParams]="{ role: 'ADMIN_CANCHA', plan: plan.code }" class="plan-cta">Elegir {{ plan.displayName }}</a>
         </article>
       }
     </div>

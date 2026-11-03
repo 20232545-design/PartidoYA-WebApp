@@ -1,11 +1,11 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '@app/auth/auth.service';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })
@@ -14,32 +14,11 @@ export class LoginComponent {
   password = '';
   errorMessage = '';
 
-  showRegister = false;
-  fullName = '';
-  registerEmail = '';
-  registerPassword = '';
-  role = 'JUGADOR';
-  registerErrorMessage = '';
-  registerSuccessMessage = '';
-
   constructor(
     private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef
-  ) {
-    this.showRegister = this.router.url.includes('register');
-  }
-
-  showRegisterForm(): void {
-    this.showRegister = true;
-    this.registerErrorMessage = '';
-    this.registerSuccessMessage = '';
-  }
-
-  showLoginForm(): void {
-    this.showRegister = false;
-    this.errorMessage = '';
-  }
+  ) {}
 
   onSubmit(event: Event): void {
     event.preventDefault();
@@ -55,22 +34,4 @@ export class LoginComponent {
     });
   }
 
-  onRegisterSubmit(event: Event): void {
-    event.preventDefault();
-    this.registerErrorMessage = '';
-    this.registerSuccessMessage = '';
-    this.authService.register(this.fullName, this.registerEmail, this.registerPassword, this.role).subscribe({
-      next: () => {
-        this.registerSuccessMessage = 'Cuenta creada correctamente. Ahora inicia sesión.';
-        this.email = this.registerEmail;
-        this.password = '';
-        this.showRegister = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        this.registerErrorMessage = err.error?.message || 'Error al registrar. Intenta de nuevo.';
-        this.cdr.detectChanges();
-      }
-    });
-  }
 }
