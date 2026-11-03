@@ -18,4 +18,8 @@ export class UserService {
       tap(user => this.cache.set(id, user))
     );
   }
+
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/me/password`, { currentPassword, newPassword });
+  }
 }

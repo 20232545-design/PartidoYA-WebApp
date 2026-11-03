@@ -10,5 +10,6 @@ public record UpdateProfileResource(
         List<String> availability,
         String businessName,
         String businessPhone,
-        String operationDistrict) {
+        String operationDistrict,
+        List<String> favoriteSports) {
 }

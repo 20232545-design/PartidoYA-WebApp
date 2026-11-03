@@ -56,6 +56,25 @@ public class ProfileService {
         return profileRepository.save(profile);
     }
 
+    public Profile updatePlayerDetails(UserId userId,
+                                       com.partidoya.platform.profiles.models.PhoneNumber phoneNumber,
+                                       String district, SportName primarySport, SkillLevel skillLevel,
+                                       Set<TimeSlot> availability, List<String> favoriteSports) {
+        var profile = findOrCreate(userId);
+        profile.updatePlayerDetails(phoneNumber, district, primarySport, skillLevel, availability, favoriteSports);
+        return profileRepository.save(profile);
+    }
+
+    public Profile updateCourtAdminDetails(UserId userId,
+                                           com.partidoya.platform.profiles.models.PhoneNumber phoneNumber,
+                                           String district, String businessName,
+                                           com.partidoya.platform.profiles.models.PhoneNumber businessPhone,
+                                           String operationDistrict) {
+        var profile = findOrCreate(userId);
+        profile.updateCourtAdminDetails(phoneNumber, district, businessName, businessPhone, operationDistrict);
+        return profileRepository.save(profile);
+    }
+
     @Transactional(readOnly = true)
     public Optional<Profile> findById(ProfileId profileId) {
         return profileRepository.findById(profileId);

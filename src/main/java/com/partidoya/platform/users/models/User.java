@@ -101,6 +101,10 @@ public class User {
         this.fullName = Objects.requireNonNull(fullName, "fullName must not be null");
     }
 
+    public void changePassword(HashedPassword password) {
+        this.password = Objects.requireNonNull(password, "password must not be null");
+    }
+
     public void updatePlan(Plan plan) {
         Objects.requireNonNull(plan, "plan must not be null");
         if (!plan.isCompatibleWith(this.role)) {

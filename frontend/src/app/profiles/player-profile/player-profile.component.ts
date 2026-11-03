@@ -5,6 +5,8 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ProfileService } from '@app/profiles/profile.service';
 import { AuthService } from '@app/auth/auth.service';
+import { UserService } from '@app/profiles/user.service';
+import { SubscriptionService } from '@app/subscriptions/subscription.service';
 
 @Component({
   selector: 'app-player-profile',
@@ -17,13 +19,19 @@ export class PlayerProfileComponent implements OnInit {
   primarySport = '';
   skillLevel = '';
   availability: string[] = [];
+  favoriteSports: string[] = [];
   role = '';
   plan = '';
+  email = '';
   phoneNumber = '';
   district = '';
-  businessName = '';
-  businessPhone = '';
-  operationDistrict = '';
+  currentPassword = '';
+  newPassword = '';
+  confirmPassword = '';
+  changingPassword = false;
+  passwordMessage = '';
+  subscriptionStatus = 'Sin suscripción';
+  subscriptionExpiresAt: string | null = null;
   loading = true;
   saving = false;
   nameInvalid = false;
@@ -45,20 +53,15 @@ export class PlayerProfileComponent implements OnInit {
     { value: 'EVENING', label: 'Noche' }
   ];
 
-  readonly plansByRole: Record<string, { value: string; label: string }[]> = {
-    JUGADOR: [
-      { value: 'JUGADOR_BASICO', label: 'Básico (gratis)' },
-      { value: 'JUGADOR_PLUS', label: 'Plus' }
-    ],
-    ADMIN_CANCHA: [
-      { value: 'CANCHA_SIN_PLAN', label: 'Sin plan comercial' },
-      { value: 'CANCHA_EMPRENDEDOR', label: 'Cancha Emprendedor' },
-      { value: 'CANCHA_BUSINESS', label: 'Cancha Business' }
-    ]
-  };
+  readonly plans = [
+    { value: 'JUGADOR_BASICO', label: 'Básico (gratis)' },
+    { value: 'JUGADOR_PLUS', label: 'Plus' }
+  ];
 
   constructor(
     private profileService: ProfileService,
+    private userService: UserService,
+    private subscriptionService: SubscriptionService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -67,21 +70,26 @@ export class PlayerProfileComponent implements OnInit {
     this.fullName = this.authService.getUserName() || '';
     this.role = this.authService.getRole() || '';
     this.plan = this.authService.getPlan() || '';
+    this.email = this.authService.getUserEmail() || '';
     const userId = this.authService.getUserId();
     if (!userId) {
       this.loading = false;
       return;
     }
-    this.profileService.getProfileByUserId(userId).subscribe({
-      next: (profile) => {
+    forkJoin({
+      profile: this.profileService.getProfileByUserId(userId),
+      subscription: this.subscriptionService.getMine()
+    }).subscribe({
+      next: ({ profile, subscription }) => {
+        this.plan = subscription.currentPlanCode;
         this.primarySport = profile.primarySport || '';
         this.skillLevel = profile.skillLevel || '';
         this.availability = profile.availability || [];
+        this.favoriteSports = (profile.sportPreferences || []).map(preference => preference.sportName);
         this.phoneNumber = profile.phoneNumber || '';
         this.district = profile.district || '';
-        this.businessName = profile.businessName || '';
-        this.businessPhone = profile.businessPhone || '';
-        this.operationDistrict = profile.operationDistrict || '';
+        this.subscriptionStatus = subscription.subscription?.status || (subscription.legacyAccess ? 'Acceso histórico' : 'Sin suscripción');
+        this.subscriptionExpiresAt = subscription.subscription?.currentPeriodEnd || null;
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -93,7 +101,7 @@ export class PlayerProfileComponent implements OnInit {
   }
 
   get roleLabel(): string {
-    return this.role === 'ADMIN_CANCHA' ? 'Administrador de cancha' : 'Jugador';
+    return 'Jugador';
   }
 
   get initials(): string {
@@ -103,7 +111,17 @@ export class PlayerProfileComponent implements OnInit {
   }
 
   get planLabel(): string {
-    return this.availablePlans.find(p => p.value === this.plan)?.label || 'Sin plan seleccionado';
+    return this.plans.find(p => p.value === this.plan)?.label || 'Sin plan seleccionado';
+  }
+
+  get subscriptionBenefit(): string {
+    return this.plan === 'JUGADOR_PLUS'
+      ? 'Insignia Plus y acceso a los beneficios del plan durante el periodo vigente.'
+      : 'El plan Básico permite organizar y participar en partidos sin costo.';
+  }
+
+  get subscriptionActionLabel(): string {
+    return this.plan === 'JUGADOR_PLUS' ? 'Renovar Plus por 30 días' : 'Mejorar a Plus';
   }
 
   get displaySport(): string {
@@ -112,10 +130,6 @@ export class PlayerProfileComponent implements OnInit {
 
   get displaySkillLevel(): string {
     return this.skillLevels.find(level => level.value === this.skillLevel)?.label || 'Sin definir';
-  }
-
-  get availablePlans(): { value: string; label: string }[] {
-    return this.plansByRole[this.role] || [];
   }
 
   save(): void {
@@ -132,21 +146,19 @@ export class PlayerProfileComponent implements OnInit {
     this.saving = true;
     const requests = {
       fullName: this.profileService.updateFullName(userId, this.fullName.trim()),
-      profile: this.profileService.updateProfile(userId, {
+      profile: this.profileService.updatePlayerProfile({
         phoneNumber: this.phoneNumber,
         district: this.district,
-        primarySport: this.role === 'JUGADOR' ? this.primarySport || null : null,
-        skillLevel: this.role === 'JUGADOR' ? this.skillLevel || null : null,
-        availability: this.role === 'JUGADOR' ? this.availability : [],
-        businessName: this.role === 'ADMIN_CANCHA' ? this.businessName : null,
-        businessPhone: this.role === 'ADMIN_CANCHA' ? this.businessPhone : null,
-        operationDistrict: this.role === 'ADMIN_CANCHA' ? this.operationDistrict : null
+        primarySport: this.primarySport || null,
+        skillLevel: this.skillLevel || null,
+        availability: this.availability,
+        favoriteSports: this.favoriteSports
       })
     };
 
     forkJoin(requests).subscribe({
       next: (result) => {
-        localStorage.setItem('userName', result.fullName.fullName);
+        this.authService.updateUserName(result.fullName.fullName);
         this.saving = false;
         this.successMessage = 'Perfil actualizado correctamente.';
         this.cdr.detectChanges();
@@ -154,6 +166,31 @@ export class PlayerProfileComponent implements OnInit {
       error: (err) => {
         this.saving = false;
         this.errorMessage = err.error?.message || 'No se pudo actualizar el perfil.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  changePassword(): void {
+    this.errorMessage = '';
+    this.passwordMessage = '';
+    if (!this.currentPassword || !this.newPassword || this.newPassword !== this.confirmPassword) {
+      this.errorMessage = 'Completa las contraseñas y confirma correctamente la nueva.';
+      return;
+    }
+    this.changingPassword = true;
+    this.userService.changePassword(this.currentPassword, this.newPassword).subscribe({
+      next: () => {
+        this.changingPassword = false;
+        this.currentPassword = '';
+        this.newPassword = '';
+        this.confirmPassword = '';
+        this.passwordMessage = 'Contraseña actualizada correctamente.';
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.changingPassword = false;
+        this.errorMessage = err.error?.message || 'No se pudo actualizar la contraseña.';
         this.cdr.detectChanges();
       }
     });
@@ -172,5 +209,11 @@ export class PlayerProfileComponent implements OnInit {
     } else {
       this.availability.splice(index, 1);
     }
+  }
+
+  toggleFavoriteSport(sport: string): void {
+    const index = this.favoriteSports.indexOf(sport);
+    if (index >= 0) this.favoriteSports.splice(index, 1);
+    else this.favoriteSports.push(sport);
   }
 }

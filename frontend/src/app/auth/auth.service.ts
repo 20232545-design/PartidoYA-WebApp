@@ -57,6 +57,10 @@ export class AuthService {
     return this.sessionStore.plan();
   }
 
+  updateUserName(name: string): void {
+    this.sessionStore.updateUserName(name);
+  }
+
   isPlayerPlan(): boolean {
     const plan = this.getPlan();
     return this.getRole() === 'JUGADOR' && (plan === 'JUGADOR_BASICO' || plan === 'JUGADOR_PLUS');

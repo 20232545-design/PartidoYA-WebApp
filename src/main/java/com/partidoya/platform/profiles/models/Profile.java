@@ -118,6 +118,34 @@ public class Profile {
         this.operationDistrict = normalize(operationDistrict);
     }
 
+    public void updatePlayerDetails(PhoneNumber phoneNumber, String district, SportName primarySport,
+                                    SkillLevel skillLevel, Set<TimeSlot> availability, List<String> favoriteSports) {
+        this.phoneNumber = phoneNumber;
+        this.district = normalize(district);
+        this.primarySport = primarySport;
+        this.skillLevel = skillLevel;
+        this.availability = availability == null ? new HashSet<>() : new HashSet<>(availability);
+        if (favoriteSports != null) {
+            var preferenceLevel = skillLevel == null ? SkillLevel.BEGINNER : skillLevel;
+            this.sportPreferences = favoriteSports.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(value -> !value.isBlank())
+                    .distinct()
+                    .map(value -> new SportPreference(new SportName(value), preferenceLevel))
+                    .toList();
+        }
+    }
+
+    public void updateCourtAdminDetails(PhoneNumber phoneNumber, String district, String businessName,
+                                        PhoneNumber businessPhone, String operationDistrict) {
+        this.phoneNumber = phoneNumber;
+        this.district = normalize(district);
+        this.businessName = normalize(businessName);
+        this.businessPhone = businessPhone;
+        this.operationDistrict = normalize(operationDistrict);
+    }
+
     private static String normalize(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }

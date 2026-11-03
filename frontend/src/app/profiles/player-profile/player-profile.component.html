@@ -25,11 +25,19 @@
           <div class="summary-list">
             <div>
               <span>Correo</span>
-              <strong>No disponible</strong>
+              <strong>{{ email }}</strong>
             </div>
             <div>
               <span>Plan actual</span>
               <strong>{{ planLabel }}</strong>
+            </div>
+            <div>
+              <span>Estado de acceso</span>
+              <strong>{{ subscriptionStatus }}</strong>
+            </div>
+            <div>
+              <span>Vencimiento</span>
+              <strong>{{ subscriptionExpiresAt ? (subscriptionExpiresAt | date:'dd/MM/yyyy') : 'Sin vencimiento' }}</strong>
             </div>
             <div>
               <span>Deporte principal</span>
@@ -87,13 +95,12 @@
           <section class="form-section">
             <div class="section-title">
               <h3>Suscripción</h3>
-              <p>Los planes se gestionan de forma segura y no pueden cambiarse desde el perfil.</p>
+              <p>{{ subscriptionBenefit }} La renovación de planes pagados siempre es manual.</p>
             </div>
 
-            <a routerLink="/mi-suscripcion" class="btn-submit">Ver mi suscripción</a>
+            <a routerLink="/mi-suscripcion" class="btn-submit">{{ subscriptionActionLabel }}</a>
           </section>
 
-          @if (role === 'JUGADOR') {
           <section class="form-section">
             <div class="section-title">
               <h3>Preferencias deportivas</h3>
@@ -137,32 +144,46 @@
                 }
               </div>
             </div>
+
+            <div class="form-group">
+              <label>Deportes favoritos</label>
+              <div class="checkbox-group">
+                @for (sport of sports; track sport) {
+                  <label class="checkbox-option">
+                    <input type="checkbox" [checked]="favoriteSports.includes(sport)" (change)="toggleFavoriteSport(sport)">
+                    {{ sport }}
+                  </label>
+                }
+              </div>
+            </div>
           </section>
-          } @else {
-            <section class="form-section">
-              <div class="section-title">
-                <h3>Datos del negocio</h3>
-                <p>Información operativa de tu cancha o complejo deportivo.</p>
+
+          <section class="form-section">
+            <div class="section-title">
+              <h3>Seguridad</h3>
+              <p>Usa una contraseña distinta, con al menos 10 caracteres, mayúscula, minúscula, número y símbolo.</p>
+            </div>
+            @if (passwordMessage) { <div class="success-banner">{{ passwordMessage }}</div> }
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="currentPassword">Contraseña actual</label>
+                <input id="currentPassword" type="password" name="currentPassword" [(ngModel)]="currentPassword" autocomplete="current-password">
               </div>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="businessName">Nombre comercial</label>
-                  <input id="businessName" type="text" name="businessName" [(ngModel)]="businessName">
-                </div>
-                <div class="form-group">
-                  <label for="businessPhone">Teléfono del negocio</label>
-                  <input id="businessPhone" type="tel" name="businessPhone" [(ngModel)]="businessPhone" placeholder="+51987654321">
-                </div>
-                <div class="form-group">
-                  <label for="operationDistrict">Distrito de operación</label>
-                  <select id="operationDistrict" name="operationDistrict" [(ngModel)]="operationDistrict">
-                    <option value="">Selecciona un distrito</option>
-                    @for (item of districts; track item) { <option [value]="item">{{ item }}</option> }
-                  </select>
-                </div>
+              <div class="form-group">
+                <label for="newPassword">Nueva contraseña</label>
+                <input id="newPassword" type="password" name="newPassword" [(ngModel)]="newPassword" autocomplete="new-password">
               </div>
-            </section>
-          }
+              <div class="form-group">
+                <label for="confirmPassword">Confirmar contraseña</label>
+                <input id="confirmPassword" type="password" name="confirmPassword" [(ngModel)]="confirmPassword" autocomplete="new-password">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn-submit btn-secondary" [disabled]="changingPassword" (click)="changePassword()">
+                {{ changingPassword ? 'Actualizando...' : 'Cambiar contraseña' }}
+              </button>
+            </div>
+          </section>
 
           <div class="form-actions">
             <button type="submit" class="btn-submit" [disabled]="saving">

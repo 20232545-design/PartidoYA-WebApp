@@ -37,7 +37,40 @@ export class ProfileService {
     businessName: string | null;
     businessPhone: string | null;
     operationDistrict: string | null;
+    favoriteSports?: string[];
   }): Observable<ProfileResponse> {
     return this.http.patch<ProfileResponse>(`${this.apiUrl}/profiles/user/${userId}`, profile);
+  }
+
+  updatePlayerProfile(profile: {
+    phoneNumber: string;
+    district: string;
+    primarySport: string | null;
+    skillLevel: string | null;
+    availability: string[];
+    favoriteSports: string[];
+  }): Observable<ProfileResponse> {
+    return this.http.patch<ProfileResponse>(`${this.apiUrl}/profiles/me/player`, {
+      ...profile,
+      businessName: null,
+      businessPhone: null,
+      operationDistrict: null
+    });
+  }
+
+  updateCourtAdminProfile(profile: {
+    phoneNumber: string;
+    district: string;
+    businessName: string | null;
+    businessPhone: string | null;
+    operationDistrict: string | null;
+  }): Observable<ProfileResponse> {
+    return this.http.patch<ProfileResponse>(`${this.apiUrl}/profiles/me/court-admin`, {
+      ...profile,
+      primarySport: null,
+      skillLevel: null,
+      availability: [],
+      favoriteSports: []
+    });
   }
 }

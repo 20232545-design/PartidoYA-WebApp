@@ -5,7 +5,7 @@ export const profileRoutes: Routes = [
   {
     path: 'mi-perfil',
     canActivate: [authGuard],
-    loadComponent: () => import('./player-profile/player-profile.component').then(module => module.PlayerProfileComponent)
+    loadComponent: () => import('./profile-page/profile-page.component').then(module => module.ProfilePageComponent)
   },
   {
     path: 'profile',

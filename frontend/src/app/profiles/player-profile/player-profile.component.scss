@@ -263,6 +263,13 @@
   }
 }
 
+.btn-secondary {
+  margin-top: 1rem;
+  background: transparent;
+  color: #c6f135;
+  border: 1px solid rgba(198, 241, 53, 0.65);
+}
+
 @media (max-width: 900px) {
   .profile-layout {
     grid-template-columns: 1fr;

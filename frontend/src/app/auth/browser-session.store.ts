@@ -60,6 +60,10 @@ export class BrowserSessionStore {
     localStorage.setItem(SESSION_KEYS.plan, plan);
   }
 
+  updateUserName(name: string): void {
+    localStorage.setItem(SESSION_KEYS.userName, name);
+  }
+
   private read(key: string): string | null {
     return localStorage.getItem(key);
   }

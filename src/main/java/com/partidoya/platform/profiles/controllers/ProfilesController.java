@@ -15,6 +15,8 @@ import com.partidoya.platform.profiles.dto.CreateProfileCommandFromResourceAssem
 import com.partidoya.platform.profiles.dto.ProfileResourceFromEntityAssembler;
 import com.partidoya.platform.profiles.services.ProfileService;
 import com.partidoya.platform.auth.security.CurrentUserService;
+import com.partidoya.platform.users.models.Role;
+import com.partidoya.platform.shared.exceptions.ForbiddenActionException;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -73,18 +75,20 @@ public class ProfilesController {
 
     @PatchMapping("/user/{userId}/primary-sport")
     public ResponseEntity<ProfileResource> updatePrimarySport(@PathVariable Long userId, @RequestBody UpdatePrimarySportResource resource) {
-        var profile = profileService.updatePrimarySport(currentUserService.requireSelf(userId), new SportName(resource.primarySport()));
+        currentUserService.requireSelf(userId);
+        var profile = profileService.updatePrimarySport(currentUserService.requireRole(Role.JUGADOR), new SportName(resource.primarySport()));
         var body = ProfileResourceFromEntityAssembler.toResourceFromEntity(profile);
         return ResponseEntity.ok(body);
     }
 
     @PatchMapping("/user/{userId}/game-preferences")
     public ResponseEntity<ProfileResource> updateGamePreferences(@PathVariable Long userId, @RequestBody UpdateGamePreferencesResource resource) {
+        currentUserService.requireSelf(userId);
         Set<TimeSlot> availability = resource.availability() == null
                 ? Set.of()
                 : resource.availability().stream().map(TimeSlot::valueOf).collect(Collectors.toSet());
         var profile = profileService.updateGamePreferences(
-                currentUserService.requireSelf(userId),
+                currentUserService.requireRole(Role.JUGADOR),
                 SkillLevel.valueOf(resource.skillLevel()),
                 availability);
         var body = ProfileResourceFromEntityAssembler.toResourceFromEntity(profile);
@@ -93,20 +97,59 @@ public class ProfilesController {
 
     @PatchMapping("/user/{userId}")
     public ResponseEntity<ProfileResource> updateProfile(@PathVariable Long userId, @RequestBody UpdateProfileResource resource) {
+        var principal = currentUserService.require();
+        currentUserService.requireSelf(userId);
+        return updateForRole(principal.role(), new UserId(userId), resource);
+    }
+
+    @PatchMapping("/me/player")
+    public ResponseEntity<ProfileResource> updatePlayerProfile(@RequestBody UpdateProfileResource resource) {
+        return updateForRole(Role.JUGADOR, currentUserService.requireRole(Role.JUGADOR), resource);
+    }
+
+    @PatchMapping("/me/court-admin")
+    public ResponseEntity<ProfileResource> updateCourtAdminProfile(@RequestBody UpdateProfileResource resource) {
+        return updateForRole(Role.ADMIN_CANCHA, currentUserService.requireRole(Role.ADMIN_CANCHA), resource);
+    }
+
+    private ResponseEntity<ProfileResource> updateForRole(Role role, UserId userId, UpdateProfileResource resource) {
         var availability = resource.availability() == null
                 ? Set.<TimeSlot>of()
                 : resource.availability().stream().map(value -> TimeSlot.valueOf(value.toUpperCase())).collect(Collectors.toSet());
-        var profile = profileService.updateDetails(
-                currentUserService.requireSelf(userId),
-                optionalPhone(resource.phoneNumber()),
-                resource.district(),
-                optionalSport(resource.primarySport()),
-                optionalSkillLevel(resource.skillLevel()),
-                availability,
-                resource.businessName(),
-                optionalPhone(resource.businessPhone()),
-                resource.operationDistrict());
+        final var profile = switch (role) {
+            case JUGADOR -> {
+                rejectBusinessFields(resource);
+                yield profileService.updatePlayerDetails(userId, optionalPhone(resource.phoneNumber()),
+                        resource.district(), optionalSport(resource.primarySport()),
+                        optionalSkillLevel(resource.skillLevel()), availability, resource.favoriteSports());
+            }
+            case ADMIN_CANCHA -> {
+                rejectPlayerFields(resource);
+                yield profileService.updateCourtAdminDetails(userId, optionalPhone(resource.phoneNumber()),
+                        resource.district(), resource.businessName(), optionalPhone(resource.businessPhone()),
+                        resource.operationDistrict());
+            }
+            default -> throw new ForbiddenActionException("Este tipo de cuenta no tiene un perfil editable");
+        };
         return ResponseEntity.ok(ProfileResourceFromEntityAssembler.toResourceFromEntity(profile));
+    }
+
+    private static void rejectBusinessFields(UpdateProfileResource resource) {
+        if (hasText(resource.businessName()) || hasText(resource.businessPhone()) || hasText(resource.operationDistrict())) {
+            throw new ForbiddenActionException("Un jugador no puede modificar datos de negocio");
+        }
+    }
+
+    private static void rejectPlayerFields(UpdateProfileResource resource) {
+        if (hasText(resource.primarySport()) || hasText(resource.skillLevel())
+                || (resource.availability() != null && !resource.availability().isEmpty())
+                || (resource.favoriteSports() != null && !resource.favoriteSports().isEmpty())) {
+            throw new ForbiddenActionException("Un administrador de cancha no puede modificar preferencias de jugador");
+        }
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private PhoneNumber optionalPhone(String value) {

@@ -1,0 +1,72 @@
+<section class="perfil-wrapper">
+  <div class="container">
+    <div class="page-header">
+      <span>Cuenta empresarial</span>
+      <h1>Perfil de administrador de cancha</h1>
+      <p>Gestiona tus datos personales y la información operativa de tu negocio.</p>
+    </div>
+
+    @if (loading) {
+      <p class="loading-text">Cargando perfil...</p>
+    } @else {
+      @if (successMessage) { <div class="success-banner">{{ successMessage }}</div> }
+      @if (errorMessage) { <div class="error-banner">{{ errorMessage }}</div> }
+
+      <div class="profile-layout">
+        <aside class="profile-summary">
+          <div class="avatar">{{ initials }}</div>
+          <h2>{{ businessName || fullName || 'Tu negocio' }}</h2>
+          <p>Administrador de cancha</p>
+          <div class="summary-list">
+            <div><span>Responsable</span><strong>{{ fullName }}</strong></div>
+            <div><span>Correo</span><strong>{{ email }}</strong></div>
+            <div><span>Plan actual</span><strong>{{ planLabel }}</strong></div>
+            <div><span>Estado de acceso</span><strong>{{ subscriptionStatus }}</strong></div>
+            <div><span>Vencimiento</span><strong>{{ subscriptionExpiresAt ? (subscriptionExpiresAt | date:'dd/MM/yyyy') : 'Sin vencimiento' }}</strong></div>
+            <div><span>Canchas administradas</span><strong>{{ managedCourts }}</strong></div>
+            <div><span>Distrito de operación</span><strong>{{ operationDistrict || 'Sin definir' }}</strong></div>
+          </div>
+        </aside>
+
+        <form class="profile-form" (submit)="$event.preventDefault(); save()">
+          <section class="form-section">
+            <div class="section-title"><h3>Datos personales</h3><p>Información del responsable de la cuenta.</p></div>
+            <div class="form-grid">
+              <div class="form-group"><label for="fullName">Nombre completo</label><input id="fullName" name="fullName" [(ngModel)]="fullName"></div>
+              <div class="form-group"><label>Tipo de cuenta</label><input value="Administrador de cancha" disabled></div>
+              <div class="form-group"><label for="phoneNumber">Celular personal</label><input id="phoneNumber" type="tel" name="phoneNumber" [(ngModel)]="phoneNumber" placeholder="+51987654321"></div>
+              <div class="form-group"><label for="district">Distrito personal</label><select id="district" name="district" [(ngModel)]="district"><option value="">Selecciona un distrito</option>@for (item of districts; track item) { <option [value]="item">{{ item }}</option> }</select></div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <div class="section-title"><h3>Datos del negocio</h3><p>Información pública y operativa del complejo deportivo.</p></div>
+            <div class="form-grid">
+              <div class="form-group"><label for="businessName">Nombre comercial</label><input id="businessName" name="businessName" [(ngModel)]="businessName"></div>
+              <div class="form-group"><label for="businessPhone">Teléfono del negocio</label><input id="businessPhone" type="tel" name="businessPhone" [(ngModel)]="businessPhone" placeholder="+51987654321"></div>
+              <div class="form-group"><label for="operationDistrict">Distrito de operación</label><select id="operationDistrict" name="operationDistrict" [(ngModel)]="operationDistrict"><option value="">Selecciona un distrito</option>@for (item of districts; track item) { <option [value]="item">{{ item }}</option> }</select></div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <div class="section-title"><h3>Suscripción</h3><p>{{ subscriptionBenefit }} La renovación es manual y no hay cargos automáticos.</p></div>
+            <a routerLink="/mi-suscripcion" class="btn-submit">{{ subscriptionActionLabel }}</a>
+          </section>
+
+          <section class="form-section">
+            <div class="section-title"><h3>Seguridad</h3><p>La nueva contraseña debe tener 10 caracteres y combinar mayúsculas, minúsculas, número y símbolo.</p></div>
+            @if (passwordMessage) { <div class="success-banner">{{ passwordMessage }}</div> }
+            <div class="form-grid">
+              <div class="form-group"><label for="currentPassword">Contraseña actual</label><input id="currentPassword" type="password" name="currentPassword" [(ngModel)]="currentPassword" autocomplete="current-password"></div>
+              <div class="form-group"><label for="newPassword">Nueva contraseña</label><input id="newPassword" type="password" name="newPassword" [(ngModel)]="newPassword" autocomplete="new-password"></div>
+              <div class="form-group"><label for="confirmPassword">Confirmar contraseña</label><input id="confirmPassword" type="password" name="confirmPassword" [(ngModel)]="confirmPassword" autocomplete="new-password"></div>
+            </div>
+            <div class="form-actions"><button type="button" class="btn-submit btn-secondary" [disabled]="changingPassword" (click)="changePassword()">{{ changingPassword ? 'Actualizando...' : 'Cambiar contraseña' }}</button></div>
+          </section>
+
+          <div class="form-actions"><button type="submit" class="btn-submit" [disabled]="saving">{{ saving ? 'Guardando...' : 'Guardar cambios' }}</button></div>
+        </form>
+      </div>
+    }
+  </div>
+</section>
