@@ -6,7 +6,8 @@ Plataforma web para organizar y unirse a partidos deportivos casuales (fútbol, 
 
 Backend en Java/Spring Boot siguiendo Domain-Driven Design, organizado en bounded contexts:
 
-- `iam` — usuarios, autenticación (JWT), roles (`JUGADOR`, `ADMIN_CANCHA`) y planes de suscripción.
+- `auth` y `users` — registro, autenticación JWT, identidad, roles y autorización.
+- `subscriptions` — catálogo, suscripciones recurrentes, pagos e idempotencia de webhooks.
 - `matches` — creación, unión, cancelación y solicitudes de pago de partidos.
 - `profiles` — perfil del jugador (deporte principal, nivel, preferencias).
 - `courts` — canchas y reservas gestionadas por administradores.
@@ -38,7 +39,8 @@ La estructura detallada, los límites de dependencia y la comparación con la ar
 
 ## Funcionalidades principales
 
-- Registro/login con roles diferenciados: jugador vs. administrador de cancha.
+- Registro guiado con roles diferenciados, perfiles ampliados y cuenta gratuita para jugadores o administradores.
+- Suscripciones recurrentes separadas de los pagos de reservas, con activación exclusiva por webhook verificado de Culqi.
 - Creación de partidos con dirección autocompletada (Google Places) y ubicación guardada.
 - Panel de inicio con partidos cercanos por geolocalización y "tus partidos" (donde ya estás inscrito).
 - Detalle de partido con mapa de ruta ("Cómo llegar") calculado automáticamente desde la ubicación del jugador.
@@ -48,7 +50,7 @@ La estructura detallada, los límites de dependencia y la comparación con la ar
 ## Correr el proyecto localmente
 
 ### Backend
-Requiere MySQL corriendo en `localhost:3306` (o ajustar `application-dev.properties`).
+El perfil local usa H2 en memoria y ejecuta las mismas migraciones Flyway que producción.
 
 ```bash
 mvn spring-boot:run
@@ -89,8 +91,11 @@ Los resultados y limitaciones verificadas están en [`docs/VALIDATION.md`](docs/
 - `DATABASE_USER` y `DATABASE_PASSWORD`
 - `JWT_SECRET` con al menos 32 caracteres aleatorios
 - `CORS_ALLOWED_ORIGINS` con el dominio exacto del frontend
+- `CULQI_PUBLIC_KEY` y `CULQI_SECRET_KEY` de pruebas o producción según el entorno
+- `CULQI_PLAN_JUGADOR_PLUS`, `CULQI_PLAN_CANCHA_EMPRENDEDOR` y `CULQI_PLAN_CANCHA_BUSINESS`
 
 Render comprueba el backend mediante `/actuator/health`. Flyway crea y valida el esquema al iniciar.
+La configuración y operación segura de las suscripciones está documentada en [`docs/SUBSCRIPTIONS.md`](docs/SUBSCRIPTIONS.md).
 En el frontend, `API_URL` y `GOOGLE_MAPS_API_KEY` se inyectan durante `npm run build`. La clave de
 Maps es opcional: sin ella, las vistas de ubicación usan OpenStreetMap y la dirección se puede
 ingresar manualmente. Si se configura una clave, debe restringirse por referente HTTP y a Maps

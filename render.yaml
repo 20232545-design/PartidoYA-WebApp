@@ -20,6 +20,16 @@ services:
         value: "false"
       - key: JWT_SECRET
         generateValue: true
+      - key: CULQI_PUBLIC_KEY
+        sync: false
+      - key: CULQI_SECRET_KEY
+        sync: false
+      - key: CULQI_PLAN_JUGADOR_PLUS
+        sync: false
+      - key: CULQI_PLAN_CANCHA_EMPRENDEDOR
+        sync: false
+      - key: CULQI_PLAN_CANCHA_BUSINESS
+        sync: false
       - key: CORS_ALLOWED_ORIGINS
         value: https://partidoya.pro,https://www.partidoya.pro,https://partidoya-web-20232545.onrender.com
       - key: CORS_ALLOWED_ORIGIN_PATTERNS
