@@ -25,6 +25,7 @@ export class MySubscriptionComponent implements OnInit {
   processing = '';
   message = '';
   errorMessage = '';
+  private paymentAttemptKey: string | null = null;
 
   ngOnInit(): void {
     this.load();
@@ -57,11 +58,17 @@ export class MySubscriptionComponent implements OnInit {
     this.errorMessage = '';
     try {
       if (!plan.subscriptionAvailable) throw new Error('Culqi aún no está habilitado para este plan. No se realizó ningún cobro.');
-      const token = await this.paymentService.captureCardToken(`Acceso por 30 días - ${plan.displayName}`, plan.amountCents);
-      const result = await firstValueFrom(this.subscriptionService.create(plan.code, token));
-      this.message = result.status === 'FAILED'
-        ? 'No se pudo completar el pago. Tu plan anterior no cambió.'
-        : 'Pago confirmado. Tu acceso se activó por 30 días y no tiene renovación automática.';
+      const token = await this.paymentService.capturePaymentToken(`Acceso por 30 días - ${plan.displayName}`, plan.amountCents);
+      this.paymentAttemptKey ??= crypto.randomUUID();
+      const result = await firstValueFrom(this.subscriptionService.create(plan.code, token, this.paymentAttemptKey));
+      if (result.status === 'ACTIVE') {
+        this.paymentAttemptKey = null;
+        this.message = 'Pago confirmado. Tu acceso se activó por 30 días y no tiene renovación automática.';
+      } else if (result.status === 'PENDING') {
+        this.message = 'Culqi recibió la operación. La confirmación está en conciliación y no se realizará otro cobro.';
+      } else {
+        this.message = 'Culqi rechazó el pago. Tu plan anterior no cambió.';
+      }
       this.load();
     } catch (error: any) {
       this.errorMessage = error?.error?.message || error?.message || 'No se pudo completar el pago.';

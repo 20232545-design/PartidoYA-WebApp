@@ -38,6 +38,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 class SubscriptionServiceTest {
     private SubscriptionRepository subscriptionRepository;
@@ -95,6 +96,50 @@ class SubscriptionServiceTest {
         assertThat(user.getPlan()).isEqualTo(Plan.JUGADOR_PLUS);
         verify(userRepository).save(any());
         verify(paymentRepository).save(any());
+    }
+
+    @Test
+    void indeterminateProviderResponseKeepsPaymentPendingForReconciliation() {
+        var user = player(Plan.JUGADOR_BASICO, false);
+        var plan = plan("JUGADOR_PLUS", "JUGADOR", 1490);
+        when(subscriptionRepository.findByIdempotencyKey("key-pending")).thenReturn(Optional.empty());
+        when(subscriptionRepository.findByUserIdAndStatus(7L, SubscriptionStatus.ACTIVE)).thenReturn(List.of());
+        when(userRepository.findById(new UserId(7L))).thenReturn(Optional.of(user));
+        when(planRepository.findById("JUGADOR_PLUS")).thenReturn(Optional.of(plan));
+        when(oneTimeGateway.charge(any())).thenThrow(new IllegalStateException("respuesta perdida"));
+
+        var result = service.create(new UserId(7L),
+                new CreateSubscriptionResource("JUGADOR_PLUS", "tkn-1", true, "key-pending"));
+
+        assertThat(result.status()).isEqualTo("PENDING");
+        assertThat(user.getPlan()).isEqualTo(Plan.JUGADOR_BASICO);
+        var paymentCaptor = ArgumentCaptor.forClass(SubscriptionPaymentEntity.class);
+        verify(paymentRepository).save(paymentCaptor.capture());
+        assertThat(paymentCaptor.getValue().getStatus()).isEqualTo(SubscriptionPaymentStatus.PENDING);
+    }
+
+    @Test
+    void retryWithSameKeyReusesPendingOperationAndActivatesWithoutCreatingAnotherSubscription() {
+        var user = player(Plan.JUGADOR_BASICO, false);
+        var plan = plan("JUGADOR_PLUS", "JUGADOR", 1490);
+        var existing = subscription(null, SubscriptionStatus.PENDING);
+        existing.setPaymentMode("ONE_TIME");
+        existing.setIdempotencyKey("key-retry");
+        when(subscriptionRepository.findByIdempotencyKey("key-retry")).thenReturn(Optional.of(existing));
+        when(subscriptionRepository.findByUserIdAndStatus(7L, SubscriptionStatus.ACTIVE)).thenReturn(List.of());
+        when(userRepository.findById(new UserId(7L))).thenReturn(Optional.of(user));
+        when(planRepository.findById("JUGADOR_PLUS")).thenReturn(Optional.of(plan));
+        when(oneTimeGateway.charge(any())).thenReturn(new ChargeResult(
+                "chr-retry", 1490, "PEN", "Exitosa", "venta_exitosa", LocalDateTime.now(),
+                7L, "JUGADOR_PLUS", "key-retry"));
+        when(paymentRepository.existsByProviderTransactionId("chr-retry")).thenReturn(false);
+
+        var result = service.create(new UserId(7L),
+                new CreateSubscriptionResource("JUGADOR_PLUS", "tkn-retry", true, "key-retry"));
+
+        assertThat(result.status()).isEqualTo("ACTIVE");
+        assertThat(user.getPlan()).isEqualTo(Plan.JUGADOR_PLUS);
+        verify(oneTimeGateway, times(1)).charge(any());
     }
 
     @Test

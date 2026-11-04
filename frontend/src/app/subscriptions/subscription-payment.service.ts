@@ -21,7 +21,7 @@ export class SubscriptionPaymentService {
   private scriptPromise: Promise<void> | null = null;
   private publicKey: string | null = null;
 
-  async captureCardToken(description: string, amountCents: number): Promise<string> {
+  async capturePaymentToken(description: string, amountCents: number): Promise<string> {
     await this.ensureCheckoutLoaded();
     if (!window.Culqi || !this.publicKey) throw new Error('Culqi no está disponible para pagos.');
     window.Culqi.publicKey = this.publicKey;
@@ -36,7 +36,7 @@ export class SubscriptionPaymentService {
       installments: false,
       paymentMethods: {
         tarjeta: true,
-        yape: false,
+        yape: true,
         bancaMovil: false,
         agente: false,
         billetera: false,
@@ -56,7 +56,7 @@ export class SubscriptionPaymentService {
           resolve(token);
           return;
         }
-        reject(new Error(window.Culqi?.error?.user_message || 'No se pudo validar la tarjeta.'));
+        reject(new Error(window.Culqi?.error?.user_message || 'No se pudo validar el medio de pago.'));
       };
       window.Culqi.open();
     });

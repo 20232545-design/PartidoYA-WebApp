@@ -37,6 +37,7 @@ export class RegisterComponent implements OnInit {
   errorMessage = '';
   completionTitle = '';
   completionMessage = '';
+  private paymentAttemptKey: string | null = null;
   readonly availability = new Set<string>();
 
   readonly sports = ['Fútbol', 'Básquet', 'Voleibol', 'Tenis'];
@@ -161,19 +162,37 @@ export class RegisterComponent implements OnInit {
         this.completionTitle = 'Cuenta creada sin cobros';
         this.completionMessage = 'Los pagos con Culqi aún no están habilitados. Tu cuenta permanece sin plan pagado.';
       } else {
-        const token = await this.paymentService.captureCardToken(
+        const token = await this.paymentService.capturePaymentToken(
           `Acceso por 30 días - ${this.selectedPlan.displayName}`,
           this.selectedPlan.amountCents);
-        const subscription = await firstValueFrom(this.subscriptionService.create(this.selectedPlan.code, token));
-        this.completionTitle = subscription.status === 'FAILED' ? 'Cuenta creada sin cobros' : 'Plan activado';
-        this.completionMessage = subscription.status === 'FAILED'
-          ? 'Culqi no pudo completar el pago. Tu cuenta permanece en el plan gratuito o sin plan.'
-          : 'El pago fue confirmado y tienes 30 días de acceso, sin renovación automática.';
+        this.paymentAttemptKey ??= crypto.randomUUID();
+        const subscription = await firstValueFrom(
+          this.subscriptionService.create(this.selectedPlan.code, token, this.paymentAttemptKey));
+        if (subscription.status === 'ACTIVE') {
+          this.paymentAttemptKey = null;
+          this.completionTitle = 'Plan activado';
+          this.completionMessage = 'El pago fue confirmado y tienes 30 días de acceso, sin renovación automática.';
+        } else if (subscription.status === 'PENDING') {
+          this.completionTitle = 'Pago en verificación';
+          this.completionMessage = 'Culqi recibió la operación. Estamos conciliando la confirmación sin realizar un nuevo cobro.';
+        } else {
+          this.completionTitle = 'Cuenta creada sin cobros';
+          this.completionMessage = 'Culqi rechazó el pago. Tu cuenta permanece en el plan gratuito o sin plan.';
+        }
       }
     } catch (error: any) {
       if (this.accountCreated) {
         this.completionTitle = 'Cuenta creada sin cobros';
-        this.completionMessage = error?.message || 'No se completó el pago. Tu cuenta permanece sin un plan pagado.';
+        const mine = await firstValueFrom(this.subscriptionService.getMine()).catch(() => null);
+        if (mine?.subscription?.status === 'ACTIVE' && mine.subscription.planCode === this.selectedPlan?.code) {
+          this.paymentAttemptKey = null;
+          this.completionTitle = 'Plan activado';
+          this.completionMessage = 'El pago fue confirmado y tienes 30 días de acceso, sin renovación automática.';
+        } else {
+          this.completionTitle = 'Pago en verificación';
+          this.completionMessage = error?.error?.message || error?.message
+            || 'No recibimos la respuesta final. Puedes revisar Mi suscripción; no volveremos a cobrar este intento.';
+        }
       } else {
         this.errorMessage = error?.error?.message || 'No pudimos crear la cuenta. Revisa los datos e inténtalo nuevamente.';
       }

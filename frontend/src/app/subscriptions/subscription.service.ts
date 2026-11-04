@@ -15,12 +15,12 @@ export class SubscriptionService {
     return this.http.get<SubscriptionPlan[]>(`${this.apiUrl}/subscription-plans`);
   }
 
-  create(planCode: string, tokenId: string): Observable<Subscription> {
+  create(planCode: string, tokenId: string, idempotencyKey: string): Observable<Subscription> {
     return this.http.post<Subscription>(`${this.apiUrl}/subscriptions`, {
       planCode,
       tokenId,
       termsAccepted: true,
-      idempotencyKey: crypto.randomUUID()
+      idempotencyKey
     }).pipe(
       tap(result => {
         if (result.status === 'ACTIVE') this.sessionStore.updatePlan(result.planCode);

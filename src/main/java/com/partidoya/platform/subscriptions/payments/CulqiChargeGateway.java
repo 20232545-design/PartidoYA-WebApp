@@ -50,11 +50,12 @@ public class CulqiChargeGateway implements OneTimePaymentGateway {
             var httpRequest = HttpRequest.newBuilder(URI.create(CHARGES_API))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + secretKey)
                     .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .header("X-Charge-Idempotency-Key", request.idempotencyKey())
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
                     .build();
             var response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException(culqiMessage(response.body()));
+                throw new ChargeRejectedException(culqiMessage(response.body()));
             }
             return parse(response.body());
         } catch (InterruptedException exception) {
@@ -109,8 +110,10 @@ public class CulqiChargeGateway implements OneTimePaymentGateway {
                     metadata.path("user_id").canConvertToLong() ? metadata.path("user_id").asLong() : parseLong(metadata.path("user_id").asText()),
                     firstText(metadata, "plan_code"),
                     firstText(metadata, "idempotency_key"));
-        } catch (RuntimeException exception) {
+        } catch (ChargeRejectedException exception) {
             throw exception;
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("El cargo fue recibido por Culqi y está pendiente de conciliación", exception);
         } catch (Exception exception) {
             throw new IllegalStateException("Culqi devolvió una respuesta de cargo inválida");
         }

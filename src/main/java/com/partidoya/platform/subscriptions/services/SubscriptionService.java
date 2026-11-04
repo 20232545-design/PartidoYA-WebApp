@@ -15,6 +15,7 @@ import com.partidoya.platform.subscriptions.payments.SubscriptionPaymentGateway;
 import com.partidoya.platform.subscriptions.payments.VerifiedSubscriptionEvent;
 import com.partidoya.platform.subscriptions.payments.ChargeRequest;
 import com.partidoya.platform.subscriptions.payments.ChargeResult;
+import com.partidoya.platform.subscriptions.payments.ChargeRejectedException;
 import com.partidoya.platform.subscriptions.payments.OneTimePaymentGateway;
 import com.partidoya.platform.subscriptions.repositories.ProcessedProviderEventEntity;
 import com.partidoya.platform.subscriptions.repositories.ProcessedProviderEventRepository;
@@ -72,12 +73,18 @@ public class SubscriptionService {
 
     public SubscriptionResource create(UserId userId, CreateSubscriptionResource resource) {
         validateCreate(resource);
-        var existing = subscriptionRepository.findByIdempotencyKey(resource.idempotencyKey());
+        var normalizedKey = resource.idempotencyKey().trim();
+        var existing = subscriptionRepository.findByIdempotencyKey(normalizedKey);
         if (existing.isPresent()) {
             if (!existing.get().getUserId().equals(userId.value())) {
                 throw new ResourceConflictException("Subscription", "Idempotency key is already in use");
             }
-            return toResource(existing.get());
+            if (!existing.get().getPlanCode().equals(resource.planCode().trim().toUpperCase())) {
+                throw new ResourceConflictException("Subscription", "Idempotency key belongs to another plan");
+            }
+            if (existing.get().getStatus() == SubscriptionStatus.ACTIVE) {
+                return toResource(existing.get());
+            }
         }
         var user = subscriptionAccessService.synchronize(requireUser(userId));
         var plan = requirePaidPlan(resource.planCode());
@@ -89,13 +96,13 @@ public class SubscriptionService {
             throw new ResourceConflictException("Subscription", "Cancela primero tu suscripción recurrente anterior para evitar cargos duplicados");
         }
 
-        var subscription = new SubscriptionEntity();
+        var subscription = existing.orElseGet(SubscriptionEntity::new);
         subscription.setUserId(userId.value());
         subscription.setPlanCode(plan.getCode());
         subscription.setStatus(SubscriptionStatus.PENDING);
         subscription.setProvider("CULQI_CHARGE");
         subscription.setPaymentMode("ONE_TIME");
-        subscription.setIdempotencyKey(resource.idempotencyKey().trim());
+        subscription.setIdempotencyKey(normalizedKey);
         subscription = subscriptionRepository.save(subscription);
 
         try {
@@ -106,14 +113,20 @@ public class SubscriptionService {
                     plan.getAmountCents(),
                     plan.getCurrency(),
                     resource.tokenId().trim(),
-                    resource.idempotencyKey().trim(),
+                    normalizedKey,
                     "PartidoYA - " + plan.getDisplayName()));
             verifyCharge(charge, plan);
-            verifyChargeOwnership(charge, userId, plan.getCode(), resource.idempotencyKey().trim());
-            activateOneTime(subscription, plan, user, active, charge, null);
-        } catch (RuntimeException exception) {
+            verifyChargeOwnership(charge, userId, plan.getCode(), normalizedKey);
+            if (!paymentRepository.existsByProviderTransactionId(charge.chargeId())) {
+                activateOneTime(subscription, plan, user, active, charge, null);
+            }
+        } catch (ChargeRejectedException exception) {
             subscription.setStatus(SubscriptionStatus.FAILED);
             paymentRepository.save(oneTimePayment(subscription, plan, null, SubscriptionPaymentStatus.FAILED,
+                    safeFailureMessage(exception)));
+        } catch (RuntimeException exception) {
+            subscription.setStatus(SubscriptionStatus.PENDING);
+            paymentRepository.save(oneTimePayment(subscription, plan, null, SubscriptionPaymentStatus.PENDING,
                     safeFailureMessage(exception)));
         }
         return toResource(subscriptionRepository.save(subscription));
