@@ -1,7 +1,6 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ProfileService } from '@app/profiles/profile.service';
 import { AuthService } from '@app/auth/auth.service';
@@ -10,7 +9,7 @@ import { SubscriptionService } from '@app/subscriptions/subscription.service';
 
 @Component({
   selector: 'app-player-profile',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './player-profile.component.html',
   styleUrl: './player-profile.component.scss'
 })
@@ -116,12 +115,8 @@ export class PlayerProfileComponent implements OnInit {
 
   get subscriptionBenefit(): string {
     return this.plan === 'JUGADOR_PLUS'
-      ? 'Insignia Plus y acceso a los beneficios del plan durante el periodo vigente.'
-      : 'El plan Básico permite organizar y participar en partidos sin costo.';
-  }
-
-  get subscriptionActionLabel(): string {
-    return this.plan === 'JUGADOR_PLUS' ? 'Renovar Plus por 30 días' : 'Mejorar a Plus';
+      ? 'Insignia Plus vigente hasta el fin de tu periodo pagado. Después pasarás al plan gratuito.'
+      : 'Los jugadores usan PartidoYA gratis: organiza y participa en partidos sin costo.';
   }
 
   get displaySport(): string {

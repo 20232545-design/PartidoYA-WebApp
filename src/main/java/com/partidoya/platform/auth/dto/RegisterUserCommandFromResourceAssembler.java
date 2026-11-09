@@ -56,7 +56,9 @@ public final class RegisterUserCommandFromResourceAssembler {
     private static Plan parsePlan(String value, Role role) {
         try {
             var plan = Plan.valueOf(value == null ? "" : value.trim().toUpperCase());
-            if (plan == Plan.ADMIN_GENERAL || !plan.isCompatibleWith(role)) {
+            // Jugadores: solo plan gratuito. Administradores de cancha: solo planes pagados.
+            if (plan == Plan.ADMIN_GENERAL || !plan.isCompatibleWith(role)
+                    || plan == Plan.JUGADOR_PLUS || plan == Plan.CANCHA_SIN_PLAN) {
                 throw new IllegalArgumentException();
             }
             return plan;

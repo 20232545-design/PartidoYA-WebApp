@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '@app/auth/auth.service';
@@ -10,6 +10,18 @@ import { SubscriptionService } from '@app/subscriptions/subscription.service';
 import { SubscriptionPlan } from '@app/subscriptions/subscription.models';
 
 type PublicRole = 'JUGADOR' | 'ADMIN_CANCHA';
+
+/** Normaliza un celular peruano: acepta 987654321, 51987654321 o +51 987 654 321 y devuelve +51987654321. */
+export function normalizePeruPhone(value: string): string {
+  const compact = (value || '').replace(/[\s-]/g, '');
+  if (/^9\d{8}$/.test(compact)) return `+51${compact}`;
+  if (/^51\d{9}$/.test(compact)) return `+${compact}`;
+  return compact;
+}
+
+function peruPhoneValidator(control: AbstractControl): ValidationErrors | null {
+  return /^\+51\d{9}$/.test(normalizePeruPhone(control.value)) ? null : { peruPhone: true };
+}
 
 @Component({
   selector: 'app-register',
@@ -57,7 +69,7 @@ export class RegisterComponent implements OnInit {
     firstName: ['', [Validators.required, Validators.maxLength(60)]],
     lastName: ['', [Validators.required, Validators.maxLength(60)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: ['+51', [Validators.required, Validators.pattern(/^\+51\d{9}$/)]],
+    phone: ['+51', [Validators.required, peruPhoneValidator]],
     district: ['', Validators.required],
     password: ['', [Validators.required, Validators.minLength(10), Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/)]],
     confirmPassword: ['', Validators.required],
@@ -208,8 +220,31 @@ export class RegisterComponent implements OnInit {
 
   private validDataStep(): boolean {
     this.form.markAllAsTouched();
-    if (this.form.invalid || !this.passwordsMatch) {
-      this.errorMessage = 'Completa los campos obligatorios y revisa la contraseña.';
+    const c = this.form.controls;
+    const missing: string[] = [];
+    if (c.firstName.invalid) missing.push('nombre');
+    if (c.lastName.invalid) missing.push('apellidos');
+    if (c.email.invalid) missing.push('correo electrónico válido');
+    if (c.phone.invalid) missing.push('celular peruano de 9 dígitos');
+    if (c.district.invalid) missing.push('distrito');
+    if (missing.length) {
+      this.errorMessage = `Revisa estos campos: ${missing.join(', ')}.`;
+      return false;
+    }
+    if (c.password.invalid) {
+      this.errorMessage = 'La contraseña debe tener 10 caracteres como mínimo, con mayúscula, minúscula, número y símbolo.';
+      return false;
+    }
+    if (!this.passwordsMatch) {
+      this.errorMessage = 'Las contraseñas no coinciden.';
+      return false;
+    }
+    if (c.termsAccepted.invalid || c.privacyAccepted.invalid) {
+      this.errorMessage = 'Debes aceptar los términos y condiciones y la política de privacidad.';
+      return false;
+    }
+    if (this.form.invalid) {
+      this.errorMessage = 'Completa los campos obligatorios.';
       return false;
     }
     if (this.role === 'JUGADOR' && (!this.form.controls.primarySport.value || !this.form.controls.skillLevel.value)) {
@@ -218,7 +253,7 @@ export class RegisterComponent implements OnInit {
     }
     if (this.role === 'ADMIN_CANCHA'
       && (!this.form.controls.businessName.value || !this.form.controls.operationDistrict.value
-        || !/^\+51\d{9}$/.test(this.form.controls.businessPhone.value))) {
+        || !/^\+51\d{9}$/.test(normalizePeruPhone(this.form.controls.businessPhone.value)))) {
       this.errorMessage = 'Completa el nombre, teléfono y distrito de operación de la cancha.';
       return false;
     }
@@ -234,13 +269,13 @@ export class RegisterComponent implements OnInit {
       password: value.password,
       role: this.role,
       planCode: this.selectedPlanCode,
-      phone: value.phone,
+      phone: normalizePeruPhone(value.phone),
       district: value.district,
       primarySport: this.role === 'JUGADOR' ? value.primarySport : null,
       skillLevel: this.role === 'JUGADOR' ? value.skillLevel : null,
       availability: this.role === 'JUGADOR' ? [...this.availability] : [],
       businessName: this.role === 'ADMIN_CANCHA' ? value.businessName.trim() : null,
-      businessPhone: this.role === 'ADMIN_CANCHA' ? value.businessPhone : null,
+      businessPhone: this.role === 'ADMIN_CANCHA' ? normalizePeruPhone(value.businessPhone) : null,
       operationDistrict: this.role === 'ADMIN_CANCHA' ? value.operationDistrict : null,
       termsAccepted: value.termsAccepted,
       privacyAccepted: value.privacyAccepted,

@@ -25,4 +25,5 @@ logs/
 backups/
 .env
 .env.*
+*.env
 !.env.example
