@@ -39,6 +39,9 @@ testem.log
 /typings
 __screenshots__/
 
+# Local environment (generado por scripts/generate-environment.mjs development)
+/src/environments/environment.local.ts
+
 # System files
 .DS_Store
 Thumbs.db
