@@ -5,8 +5,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
@@ -38,16 +38,16 @@ public class CloudinaryCourtImageStorage implements CourtImageStorage {
         if (folder == null || !folder.matches("partidoya/courts/\\d+/(main|gallery)")) {
             throw new IllegalArgumentException("La carpeta de imágenes no es válida");
         }
-        var body = new MultipartBodyBuilder();
-        body.part("file", new NamedByteArrayResource(content, originalFilename));
-        body.part("api_key", apiKey);
-        body.part("timestamp", Long.toString(timestamp));
-        body.part("folder", folder);
-        body.part("signature", sha1("folder=" + folder + "&timestamp=" + timestamp + apiSecret));
+        var body = new LinkedMultiValueMap<String, Object>();
+        body.add("file", new NamedByteArrayResource(content, originalFilename));
+        body.add("api_key", apiKey);
+        body.add("timestamp", Long.toString(timestamp));
+        body.add("folder", folder);
+        body.add("signature", sha1("folder=" + folder + "&timestamp=" + timestamp + apiSecret));
         var response = restClient.post()
                 .uri("https://api.cloudinary.com/v1_1/{cloud}/image/upload", cloudName)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(body.build())
+                .body(body)
                 .retrieve()
                 .body(String.class);
         try {
@@ -66,15 +66,15 @@ public class CloudinaryCourtImageStorage implements CourtImageStorage {
         requireConfigured();
         if (publicId == null || publicId.isBlank()) return;
         var timestamp = Instant.now().getEpochSecond();
-        var body = new MultipartBodyBuilder();
-        body.part("public_id", publicId);
-        body.part("api_key", apiKey);
-        body.part("timestamp", Long.toString(timestamp));
-        body.part("signature", sha1("public_id=" + publicId + "&timestamp=" + timestamp + apiSecret));
+        var body = new LinkedMultiValueMap<String, Object>();
+        body.add("public_id", publicId);
+        body.add("api_key", apiKey);
+        body.add("timestamp", Long.toString(timestamp));
+        body.add("signature", sha1("public_id=" + publicId + "&timestamp=" + timestamp + apiSecret));
         restClient.post()
                 .uri("https://api.cloudinary.com/v1_1/{cloud}/image/destroy", cloudName)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(body.build())
+                .body(body)
                 .retrieve()
                 .toBodilessEntity();
     }
