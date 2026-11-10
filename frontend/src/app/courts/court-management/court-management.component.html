@@ -28,7 +28,13 @@
               <label>Dirección<input type="text" name="address" [(ngModel)]="form.address" placeholder="Av. Ejemplo 123" required></label>
               <label>Distrito<input type="text" name="district" [(ngModel)]="form.district" placeholder="Miraflores" required></label>
             </div>
-            @if (form.latitude !== null && form.longitude !== null) { <div #mapHost class="location-map" aria-label="Mapa de la ubicación seleccionada"></div><small class="map-help">Puedes arrastrar el marcador o tocar el mapa para ajustar el punto.</small> }
+            @if (mapsReady) {
+              <div #mapHost class="location-map" aria-label="Mapa de la ubicación de la cancha"></div>
+              <small class="map-help">
+                @if (form.latitude !== null && form.longitude !== null) { Puedes arrastrar el marcador o tocar el mapa para ajustar el punto. }
+                @else { Busca tu cancha arriba o toca el mapa para marcar su ubicación. }
+              </small>
+            }
           </section>
         }
 

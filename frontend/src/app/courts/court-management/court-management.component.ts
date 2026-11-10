@@ -33,6 +33,8 @@ export class CourtManagementComponent implements OnInit {
   mapsReady = false;
   googlePhotoPreviews: { url: string; attribution: string }[] = [];
   showGooglePhotos = false;
+  private geocodeRequestId = 0;
+  private placeAutocompleteElement: any = null;
   selectedFiles: File[] = [];
   filePreviews: string[] = [];
   form: SaveCourtRequest = this.emptyForm();
@@ -66,7 +68,11 @@ export class CourtManagementComponent implements OnInit {
     }
   }
 
-  previousStep(): void { this.errorMessage = ''; this.step = Math.max(1, this.step - 1); }
+  previousStep(): void {
+    this.errorMessage = '';
+    this.step = Math.max(1, this.step - 1);
+    if (this.step === 2) setTimeout(() => void this.initializePlaces());
+  }
   goToStep(step: number): void {
     if (step < this.step || this.stepsBeforeAreValid(step)) {
       this.step = step;
@@ -250,35 +256,8 @@ export class CourtManagementComponent implements OnInit {
     try {
       await this.mapsLoader.load();
       const { PlaceAutocompleteElement } = await window.google.maps.importLibrary('places') as any;
-      const autocomplete = new PlaceAutocompleteElement({ includedRegionCodes: ['pe'] });
-      autocomplete.placeholder = 'Busca el complejo, club o dirección';
-      autocomplete.addEventListener('gmp-select', async (event: any) => {
-        const place = event.placePrediction.toPlace();
-        await place.fetchFields({ fields: ['id', 'displayName', 'formattedAddress', 'location', 'addressComponents', 'photos'] });
-        this.form.googlePlaceId = place.id || null;
-        this.form.googlePlaceName = place.displayName || null;
-        this.form.address = place.formattedAddress || '';
-        this.form.latitude = place.location?.lat() ?? null;
-        this.form.longitude = place.location?.lng() ?? null;
-        if (this.form.latitude !== null && this.form.longitude !== null
-          && !this.isSupportedLocation(this.form.latitude, this.form.longitude)) {
-          this.form.latitude = null;
-          this.form.longitude = null;
-          this.errorMessage = 'Selecciona una ubicación dentro del Perú.';
-          this.cdr.detectChanges();
-          return;
-        }
-        this.form.district = this.findDistrict(place.addressComponents) || this.form.district;
-        this.googlePhotoPreviews = (place.photos || []).slice(0, 6)
-          .map((photo: any) => ({
-            url: photo.getURI({ maxWidth: 720, maxHeight: 480 }),
-            attribution: (photo.authorAttributions || []).map((author: any) => author.displayName).filter(Boolean).join(', ')
-          }));
-        this.showGooglePhotos = false;
-        this.cdr.detectChanges();
-        setTimeout(() => this.renderMap());
-      });
-      this.placeAutocompleteHost?.nativeElement.replaceChildren(autocomplete);
+      this.placeAutocompleteElement = PlaceAutocompleteElement;
+      this.mountPlaceAutocomplete();
       this.mapsReady = true;
       this.mapsMessage = '';
       setTimeout(() => this.renderMap());
@@ -289,34 +268,110 @@ export class CourtManagementComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  /** Crea (o recrea vacío) el buscador de Google Places. */
+  private mountPlaceAutocomplete(): void {
+    if (!this.placeAutocompleteElement) return;
+    const autocomplete = new this.placeAutocompleteElement({ includedRegionCodes: ['pe'] });
+    autocomplete.placeholder = 'Busca el complejo, club o dirección';
+    autocomplete.addEventListener('gmp-select', async (event: any) => {
+      const place = event.placePrediction.toPlace();
+      await place.fetchFields({ fields: ['id', 'displayName', 'formattedAddress', 'location', 'addressComponents', 'photos'] });
+      this.form.googlePlaceId = place.id || null;
+      this.form.googlePlaceName = place.displayName || null;
+      this.form.address = place.formattedAddress || '';
+      this.form.latitude = place.location?.lat() ?? null;
+      this.form.longitude = place.location?.lng() ?? null;
+      if (this.form.latitude !== null && this.form.longitude !== null
+        && !this.isSupportedLocation(this.form.latitude, this.form.longitude)) {
+        this.form.latitude = null;
+        this.form.longitude = null;
+        this.errorMessage = 'Selecciona una ubicación dentro del Perú.';
+        this.cdr.detectChanges();
+        return;
+      }
+      this.form.district = this.findDistrict(place.addressComponents) || this.form.district;
+      this.googlePhotoPreviews = (place.photos || []).slice(0, 6)
+        .map((photo: any) => ({
+          url: photo.getURI({ maxWidth: 720, maxHeight: 480 }),
+          attribution: (photo.authorAttributions || []).map((author: any) => author.displayName).filter(Boolean).join(', ')
+        }));
+      this.showGooglePhotos = false;
+      this.cdr.detectChanges();
+      setTimeout(() => this.renderMap());
+    });
+    this.placeAutocompleteHost?.nativeElement.replaceChildren(autocomplete);
+  }
+
+  /** Al marcar un punto nuevo en el mapa, el lugar elegido en el buscador deja de aplicar. */
+  private clearSelectedPlace(): void {
+    if (!this.form.googlePlaceId && !this.form.googlePlaceName) return;
+    this.form.googlePlaceId = null;
+    this.form.googlePlaceName = null;
+    this.googlePhotoPreviews = [];
+    this.showGooglePhotos = false;
+    this.mountPlaceAutocomplete();
+  }
+
   private renderMap(): void {
-    if (!this.mapHost || this.form.latitude === null || this.form.longitude === null || !window.google?.maps) return;
-    const position = { lat: this.form.latitude, lng: this.form.longitude };
-    const map = new window.google.maps.Map(this.mapHost.nativeElement, { center: position, zoom: 16, mapTypeControl: false });
-    const marker = new window.google.maps.Marker({ map, position, draggable: true });
-    const updatePosition = (location: any) => {
+    if (!this.mapHost || !window.google?.maps) return;
+    const hasLocation = this.form.latitude !== null && this.form.longitude !== null;
+    const position = hasLocation ? { lat: this.form.latitude, lng: this.form.longitude } : null;
+    // Sin ubicación todavía se muestra Lima como punto de partida.
+    const map = new window.google.maps.Map(this.mapHost.nativeElement, {
+      center: position ?? { lat: -12.0464, lng: -77.0428 },
+      zoom: position ? 16 : 12,
+      mapTypeControl: false
+    });
+    const marker = new window.google.maps.Marker({ map: position ? map : null, position, draggable: true });
+    // isNewPoint: un clic en otro punto es una ubicación nueva; arrastrar el marcador solo la ajusta.
+    const updatePosition = (location: any, isNewPoint: boolean) => {
       const latitude = location.lat();
       const longitude = location.lng();
       if (!this.isSupportedLocation(latitude, longitude)) {
         this.errorMessage = 'La ubicación debe encontrarse dentro del Perú.';
-        marker.setPosition({ lat: this.form.latitude, lng: this.form.longitude });
+        if (this.form.latitude !== null && this.form.longitude !== null) {
+          marker.setPosition({ lat: this.form.latitude, lng: this.form.longitude });
+        }
         this.cdr.detectChanges();
         return;
       }
       this.errorMessage = '';
+      if (isNewPoint) this.clearSelectedPlace();
       this.form.latitude = latitude;
       this.form.longitude = longitude;
       marker.setPosition(location);
+      marker.setMap(map);
       this.cdr.detectChanges();
+      void this.fillAddressFromCoordinates(location);
     };
-    marker.addListener('dragend', (event: any) => updatePosition(event.latLng));
-    map.addListener('click', (event: any) => updatePosition(event.latLng));
+    marker.addListener('dragend', (event: any) => updatePosition(event.latLng, false));
+    map.addListener('click', (event: any) => updatePosition(event.latLng, true));
+  }
+
+  /**
+   * Completa dirección y distrito a partir del punto marcado en el mapa (geocodificación inversa).
+   * Si el lugar viene del buscador de Google, se conserva su dirección y solo se ajusta el punto.
+   */
+  private async fillAddressFromCoordinates(location: any): Promise<void> {
+    if (this.form.googlePlaceId) return;
+    const requestId = ++this.geocodeRequestId;
+    try {
+      const { results } = await new window.google.maps.Geocoder().geocode({ location });
+      // Ignora respuestas de clics anteriores si el usuario ya marcó otro punto.
+      if (requestId !== this.geocodeRequestId || !results?.length) return;
+      this.form.address = results[0].formatted_address || this.form.address;
+      this.form.district = this.findDistrict(results[0].address_components) || this.form.district;
+      this.cdr.detectChanges();
+    } catch {
+      // Sin Geocoding API o sin resultados: la dirección se completa a mano.
+    }
   }
 
   private findDistrict(components: any[]): string {
     const district = (components || []).find(component => component.types?.includes('locality')
       || component.types?.includes('sublocality_level_1') || component.types?.includes('administrative_area_level_3'));
-    return district?.longText || '';
+    // Places (New) usa longText; Geocoder usa long_name.
+    return district?.longText || district?.long_name || '';
   }
 
   private isSupportedLocation(latitude: number, longitude: number): boolean {
