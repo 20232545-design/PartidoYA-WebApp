@@ -1,6 +1,7 @@
 package com.partidoya.platform.matches.dto;
 
 import java.util.List;
+import java.util.Map;
 
 public record MatchResource(
         Long id,
@@ -20,5 +21,7 @@ public record MatchResource(
         Long courtReservationId,
         boolean requiresPlayerPayment,
         String yapePhone,
-        Double playerPaymentAmount) {
+        Double playerPaymentAmount,
+        /** Nombre visible del organizador y de cada participante, indexado por id de usuario. */
+        Map<Long, String> playerNames) {
 }

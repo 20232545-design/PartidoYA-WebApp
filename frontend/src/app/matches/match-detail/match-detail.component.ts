@@ -10,6 +10,12 @@ import { GeolocationService } from '@shared/services/geolocation.service';
 import { environment } from '@env/environment';
 import { NotificationService } from '@app/notifications/notification.service';
 import { JoinRequestService } from '@app/matches/join-request.service';
+import { PlayerReportService } from '@app/matches/player-report.service';
+import {
+  REPORT_DETAILS_MAX_LENGTH,
+  REPORT_REASON_OPTIONS,
+  ReportReason
+} from '@shared/models/player-report.models';
 
 @Component({
   selector: 'app-match-detail',
@@ -36,20 +42,20 @@ export class MatchDetailComponent implements OnInit {
   proofMessage = '';
   rejectReason = '';
   reportTargetId: number | null = null;
-  reportReason = 'Comportamiento antideportivo';
+  reportReason: ReportReason = 'UNSPORTSMANLIKE_CONDUCT';
   reportDetails = '';
   reportConfirmation = '';
-  readonly reportReasons = [
-    'Comportamiento antideportivo',
-    'Insultos o acoso',
-    'Inasistencia',
-    'Informacion falsa',
-    'Otro motivo'
-  ];
+  reportError = '';
+  reportSubmitting = false;
+  /** Jugadores que el usuario ya reportó en este partido; el backend rechaza duplicados. */
+  reportedPlayerIds = new Set<number>();
+  readonly reportReasons = REPORT_REASON_OPTIONS;
+  readonly reportDetailsMaxLength = REPORT_DETAILS_MAX_LENGTH;
 
   constructor(
     private matchService: MatchService,
     private joinRequestService: JoinRequestService,
+    private playerReportService: PlayerReportService,
     private authService: AuthService,
     private mapsLoader: MapsLoaderService,
     private openMap: OpenMapService,
@@ -78,6 +84,7 @@ export class MatchDetailComponent implements OnInit {
         this.cdr.detectChanges();
         setTimeout(() => this.initMap(), 0);
         this.loadJoinRequests();
+        this.loadReportedPlayers();
       },
       error: () => {
         this.errorMessage = 'Partido no encontrado.';
@@ -124,54 +131,99 @@ export class MatchDetailComponent implements OnInit {
   }
 
   private async initMap(): Promise<void> {
-    try {
-      await this.mapsLoader.load();
-      const position = await this.geolocation.getPosition();
-      this.renderDirections(position);
-    } catch (err: any) {
-      await this.renderOpenMapFallback(err);
-    }
-  }
-
-  private async renderOpenMapFallback(originalError: unknown): Promise<void> {
     if (!this.match || !this.mapContainer) {
       this.mapLoading = false;
       return;
     }
-    if (this.match.latitude === null || this.match.longitude === null) {
-      this.mapLoading = false;
-      this.mapError = 'No hay coordenadas guardadas. Usa “Abrir en Google Maps” para ver la ruta.';
-      this.cdr.detectChanges();
+    const container = this.mapContainer.nativeElement;
+
+    // La ubicación del usuario solo es necesaria para la ruta; la cancha se muestra siempre.
+    const [mapsResult, positionResult] = await Promise.allSettled([
+      this.mapsLoader.load(),
+      this.geolocation.getPosition()
+    ]);
+    const mapsReady = mapsResult.status === 'fulfilled';
+    const position = positionResult.status === 'fulfilled' ? positionResult.value : null;
+    const locationHint = 'Activa el permiso de ubicación para ver la ruta.';
+
+    if (mapsReady && position) {
+      await this.renderDirections(position);
       return;
     }
 
     try {
-      const position = await this.geolocation.getPosition();
-      const summary = this.openMap.renderDirectRoute(
-        this.mapContainer.nativeElement,
-        [position.coords.latitude, position.coords.longitude],
-        [this.match.latitude, this.match.longitude]
-      );
-      this.routeDuration = summary.duration;
-      this.routeDistance = summary.distance;
-      this.mapError = '';
+      if (mapsReady) {
+        await this.renderGoogleDestination(container);
+        this.mapError = locationHint;
+      } else {
+        this.renderOpenMapFallback(container, position);
+        this.mapError = this.mapError || (position ? '' : locationHint);
+      }
     } catch {
-      this.mapError = originalError instanceof Error
-        ? originalError.message
-        : 'No se pudo cargar el mapa.';
+      this.mapError = 'No se pudo cargar el mapa. Usa “Abrir en Google Maps”.';
     } finally {
       this.mapLoading = false;
       this.cdr.detectChanges();
     }
   }
 
-  private renderDirections(position: GeolocationPosition): void {
+  private async renderGoogleDestination(container: HTMLElement): Promise<void> {
+    const google = window.google;
+    const match = this.match!;
+    let center: { lat: number; lng: number };
+
+    if (match.latitude !== null && match.longitude !== null) {
+      center = { lat: match.latitude, lng: match.longitude };
+    } else {
+      const { results } = await new google.maps.Geocoder().geocode({ address: match.address });
+      if (!results?.length) throw new Error('Dirección no encontrada');
+      const location = results[0].geometry.location;
+      center = { lat: location.lat(), lng: location.lng() };
+    }
+
+    const map = new google.maps.Map(container, {
+      center,
+      zoom: 15,
+      disableDefaultUI: true,
+      zoomControl: true,
+      zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP },
+      styles: DARK_MAP_STYLE
+    });
+    new google.maps.Marker({ position: center, map, title: match.title });
+  }
+
+  private renderOpenMapFallback(container: HTMLElement, position: GeolocationPosition | null): void {
+    const match = this.match!;
+    if (match.latitude === null || match.longitude === null) {
+      this.mapError = 'No hay coordenadas guardadas. Usa “Abrir en Google Maps” para ver la ruta.';
+      return;
+    }
+
+    if (position) {
+      const summary = this.openMap.renderDirectRoute(
+        container,
+        [position.coords.latitude, position.coords.longitude],
+        [match.latitude, match.longitude]
+      );
+      this.routeDuration = summary.duration;
+      this.routeDistance = summary.distance;
+    } else {
+      this.openMap.renderLocation(container, match.latitude, match.longitude, match.title);
+    }
+  }
+
+  /** Calcula la ruta en auto con la Routes API (la Directions API legacy no está habilitada). */
+  private async renderDirections(position: GeolocationPosition): Promise<void> {
     if (!this.match || !this.mapContainer) {
       this.mapLoading = false;
       return;
     }
     const google = window.google;
+    const match = this.match;
     const origin = { lat: position.coords.latitude, lng: position.coords.longitude };
+    const destination = match.latitude !== null && match.longitude !== null
+      ? { lat: match.latitude, lng: match.longitude }
+      : match.address;
 
     const map = new google.maps.Map(this.mapContainer.nativeElement, {
       center: origin,
@@ -182,32 +234,86 @@ export class MatchDetailComponent implements OnInit {
       styles: DARK_MAP_STYLE
     });
 
-    const directionsService = new google.maps.DirectionsService();
-    const directionsRenderer = new google.maps.DirectionsRenderer({
+    try {
+      const { Route } = await google.maps.importLibrary('routes') as any;
+      const { routes } = await Route.computeRoutes({
+        origin,
+        destination,
+        travelMode: 'DRIVING',
+        language: 'es',
+        region: 'PE',
+        fields: ['path', 'distanceMeters', 'durationMillis']
+      });
+      const route = routes?.[0];
+      if (!route?.path?.length) throw new Error('Sin rutas');
+
+      new google.maps.Polyline({ map, path: route.path, strokeColor: '#c6f135', strokeWeight: 5 });
+      const end = route.path[route.path.length - 1];
+      new google.maps.Marker({ position: origin, map, title: 'Tu ubicación', label: 'A' });
+      new google.maps.Marker({ position: end, map, title: match.title, label: 'B' });
+
+      const bounds = new google.maps.LatLngBounds();
+      route.path.forEach((point: any) => bounds.extend(point));
+      map.fitBounds(bounds, 48);
+
+      this.routeDuration = this.formatDuration(route.durationMillis);
+      this.routeDistance = this.formatDistance(route.distanceMeters);
+      this.mapError = '';
+    } catch (err) {
+      console.warn('[Mapa] Routes API no pudo calcular la ruta:', err);
+      this.renderStraightLine(map, origin);
+    } finally {
+      this.mapLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  private formatDuration(millis: number | undefined): string {
+    if (!millis) return '';
+    const minutes = Math.max(1, Math.round(millis / 60000));
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return rest ? `${hours} h ${rest} min` : `${hours} h`;
+  }
+
+  private formatDistance(meters: number | undefined): string {
+    if (!meters) return '';
+    return meters < 1000 ? `${meters} m` : `${(meters / 1000).toFixed(1)} km`;
+  }
+
+  /** Si Google no puede calcular la ruta, muestra ambos puntos y la distancia en línea recta. */
+  private renderStraightLine(map: any, origin: { lat: number; lng: number }): void {
+    const google = window.google;
+    const match = this.match;
+    if (!match || match.latitude === null || match.longitude === null) {
+      this.mapError = 'No se pudo calcular la ruta a la cancha.';
+      return;
+    }
+    const destination = { lat: match.latitude, lng: match.longitude };
+
+    new google.maps.Marker({ position: origin, map, title: 'Tu ubicación' });
+    new google.maps.Marker({ position: destination, map, title: match.title });
+    new google.maps.Polyline({
       map,
-      suppressMarkers: false,
-      polylineOptions: { strokeColor: '#c6f135', strokeWeight: 5 }
+      path: [origin, destination],
+      strokeOpacity: 0,
+      icons: [{
+        icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, strokeColor: '#c6f135', scale: 3 },
+        offset: '0',
+        repeat: '14px'
+      }]
     });
 
-    directionsService.route(
-      {
-        origin,
-        destination: this.match.address,
-        travelMode: google.maps.TravelMode.DRIVING
-      },
-      (result: any, status: string) => {
-        this.mapLoading = false;
-        if (status === 'OK') {
-          directionsRenderer.setDirections(result);
-          const leg = result.routes[0].legs[0];
-          this.routeDuration = leg.duration.text;
-          this.routeDistance = leg.distance.text;
-        } else {
-          this.mapError = 'No se pudo calcular la ruta a la cancha.';
-        }
-        this.cdr.detectChanges();
-      }
-    );
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(origin);
+    bounds.extend(destination);
+    map.fitBounds(bounds, 48);
+
+    const km = this.geolocation.distanceKm(origin.lat, origin.lng, destination.lat, destination.lng);
+    this.routeDuration = '';
+    this.routeDistance = '';
+    this.mapError = `No se pudo calcular la ruta en auto · ${km.toFixed(1)} km en línea recta.`;
   }
 
   joinMatch(): void {
@@ -294,20 +400,95 @@ export class MatchDetailComponent implements OnInit {
     return labels[status] || status;
   }
 
+  playerName(playerId: number): string {
+    return this.match?.playerNames?.[playerId] || `Jugador #${playerId}`;
+  }
+
+  initial(playerId: number): string {
+    return this.playerName(playerId).trim().charAt(0).toUpperCase() || 'J';
+  }
+
+  /** Solo quien participa del partido puede reportar, y nunca a sí mismo. */
+  canReport(playerId: number): boolean {
+    return this.hasJoined || this.isOrganizer
+      ? playerId !== this.currentUserId
+      : false;
+  }
+
+  isReported(playerId: number): boolean {
+    return this.reportedPlayerIds.has(playerId);
+  }
+
+  get reportDetailsRequired(): boolean {
+    return this.reportReason === 'OTHER';
+  }
+
+  get canSubmitReport(): boolean {
+    return !this.reportSubmitting
+      && !this.reportConfirmation
+      && (!this.reportDetailsRequired || this.reportDetails.trim().length > 0);
+  }
+
   openReportModal(playerId: number): void {
+    if (!this.canReport(playerId) || this.isReported(playerId)) return;
     this.reportTargetId = playerId;
-    this.reportReason = 'Comportamiento antideportivo';
+    this.reportReason = 'UNSPORTSMANLIKE_CONDUCT';
     this.reportDetails = '';
     this.reportConfirmation = '';
+    this.reportError = '';
   }
 
   closeReportModal(): void {
+    if (this.reportSubmitting) return;
     this.reportTargetId = null;
   }
 
   submitReport(): void {
-    this.reportConfirmation = 'Reporte enviado.';
-    setTimeout(() => this.closeReportModal(), 700);
+    const matchId = this.match?.id;
+    const reportedPlayerId = this.reportTargetId;
+    if (!matchId || reportedPlayerId === null || !this.canSubmitReport) return;
+
+    this.reportSubmitting = true;
+    this.reportError = '';
+    this.playerReportService.submit(matchId, {
+      reportedPlayerId,
+      reason: this.reportReason,
+      details: this.reportDetails.trim() || null
+    }).subscribe({
+      next: () => {
+        this.reportedPlayerIds.add(reportedPlayerId);
+        this.reportSubmitting = false;
+        this.reportConfirmation = 'Reporte enviado. Nuestro equipo lo revisará.';
+        this.cdr.detectChanges();
+        setTimeout(() => {
+          this.closeReportModal();
+          this.cdr.detectChanges();
+        }, 1500);
+      },
+      error: (err) => {
+        this.reportSubmitting = false;
+        if (err.status === 409) {
+          // Ya existía un reporte (por ejemplo, desde otra pestaña): reflejarlo en la UI.
+          this.reportedPlayerIds.add(reportedPlayerId);
+          this.reportError = 'Ya reportaste a este jugador en este partido.';
+        } else {
+          this.reportError = err.error?.message || 'No se pudo enviar el reporte. Inténtalo nuevamente.';
+        }
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private loadReportedPlayers(): void {
+    if (!this.match || !(this.hasJoined || this.isOrganizer)) return;
+    this.playerReportService.reportedByMe(this.match.id).subscribe({
+      next: (ids) => {
+        this.reportedPlayerIds = new Set(ids);
+        this.cdr.detectChanges();
+      },
+      // No es crítico: si falla, el backend igual rechaza los duplicados con 409.
+      error: () => {}
+    });
   }
 
   approveRequest(request: PlayerJoinRequestResponse): void {

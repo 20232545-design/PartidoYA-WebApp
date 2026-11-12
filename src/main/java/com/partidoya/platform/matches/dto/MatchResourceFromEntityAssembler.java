@@ -4,12 +4,32 @@ import com.partidoya.platform.users.models.UserId;
 import com.partidoya.platform.matches.models.Match;
 import com.partidoya.platform.matches.dto.MatchResource;
 
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
 public final class MatchResourceFromEntityAssembler {
 
     private MatchResourceFromEntityAssembler() {
     }
 
-    public static MatchResource toResourceFromEntity(Match match) {
+    /** Ids de usuario cuyos nombres necesita el recurso (organizador y participantes). */
+    public static Set<UserId> playerIds(Match match) {
+        var ids = new LinkedHashSet<UserId>();
+        ids.add(match.getOrganizerId());
+        ids.addAll(match.getParticipants());
+        return ids;
+    }
+
+    public static MatchResource toResourceFromEntity(Match match, Map<Long, String> allNames) {
+        var playerNames = new HashMap<Long, String>();
+        for (var id : playerIds(match)) {
+            var name = allNames.get(id.value());
+            if (name != null) {
+                playerNames.put(id.value(), name);
+            }
+        }
         return new MatchResource(
                 match.getId().value(),
                 match.getOrganizerId().value(),
@@ -32,6 +52,7 @@ public final class MatchResourceFromEntityAssembler {
                 match.getYapePhone(),
                 match.getPlayerPaymentAmount() != null && match.getPlayerPaymentAmount().value() != null
                         ? match.getPlayerPaymentAmount().value().doubleValue()
-                        : null);
+                        : null,
+                playerNames);
     }
 }

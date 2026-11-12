@@ -48,6 +48,7 @@
               }
               @if (canManagePlatform) {
                 <a routerLink="/admin-users" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Gestion de usuarios</a>
+                <a routerLink="/admin-reportes" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Reportes de jugadores</a>
               }
               <a routerLink="/mi-perfil" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mi perfil</a>
               @if (canUsePlayerFeatures) {

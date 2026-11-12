@@ -417,9 +417,20 @@
 }
 
 .participant-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.875rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.75);
+}
+
+.participant-tag {
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .empty-slots {
@@ -660,6 +671,35 @@
   color: #86efac;
   font-weight: 800;
   margin-bottom: 0.75rem;
+}
+
+.report-error {
+  color: #f87171;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.report-counter {
+  justify-self: end;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.reported-tag {
+  margin-left: auto;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.report-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {

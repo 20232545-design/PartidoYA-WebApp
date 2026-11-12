@@ -10,6 +10,7 @@ import com.partidoya.platform.users.repositories.UserPersistenceRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +26,17 @@ public class UserRepositoryImpl implements UserRepository {
     public Optional<User> findById(UserId id) {
         return userPersistenceRepository.findById(id.value())
                 .map(UserPersistenceAssembler::toDomainFromPersistence);
+    }
+
+    @Override
+    public List<User> findAllByIds(Collection<UserId> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        var rawIds = ids.stream().map(UserId::value).distinct().toList();
+        return userPersistenceRepository.findAllById(rawIds).stream()
+                .map(UserPersistenceAssembler::toDomainFromPersistence)
+                .toList();
     }
 
     @Override

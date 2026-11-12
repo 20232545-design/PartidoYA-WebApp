@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -34,6 +35,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResource> handleBadRequest(IllegalArgumentException ex) {
         return new ResponseEntity<>(new ErrorResource("VALIDATION_ERROR", ex.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
+    /** Cuerpo JSON mal formado o con valores que no encajan en el tipo (por ejemplo, un enum desconocido). */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResource> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        return new ResponseEntity<>(
+                new ErrorResource("VALIDATION_ERROR", "El cuerpo de la solicitud no es válido."),
+                HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(ForbiddenActionException.class)

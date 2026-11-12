@@ -1,0 +1,109 @@
+<section class="reports-page">
+  <div class="container">
+    <header class="page-header">
+      <span>Administración</span>
+      <h1>Reportes de jugadores</h1>
+      <p>Revisa los reportes que envían los jugadores después de un partido y registra la decisión tomada.</p>
+    </header>
+
+    @if (errorMessage) {
+      <div class="alert alert-error" role="alert">{{ errorMessage }}</div>
+    }
+    @if (successMessage) {
+      <div class="alert alert-success" role="status">{{ successMessage }}</div>
+    }
+
+    <div class="tabs" role="tablist" aria-label="Filtrar por estado">
+      @for (filter of filters; track filter.value) {
+        <button type="button" role="tab" [attr.aria-selected]="statusFilter === filter.value"
+                [class.active]="statusFilter === filter.value" (click)="changeFilter(filter.value)">
+          {{ filter.label }}
+        </button>
+      }
+    </div>
+
+    <div class="reports-layout">
+      <main class="panel">
+        <div class="panel-title">
+          <h2>Reportes</h2>
+          <span>{{ totalElements }} resultados</span>
+        </div>
+
+        @if (loading) {
+          <div class="state-box">Cargando reportes...</div>
+        } @else if (reports.length === 0) {
+          <div class="state-box">No hay reportes con este filtro.</div>
+        } @else {
+          <div class="report-list">
+            @for (report of reports; track report.id) {
+              <button type="button" class="report-row" [class.active]="selected?.id === report.id" (click)="select(report)">
+                <span class="report-main">
+                  <strong>{{ report.reportedPlayerName }}</strong>
+                  <small>{{ reasonLabel(report.reason) }} · {{ report.submittedAt | date:'d MMM y, HH:mm' }}</small>
+                </span>
+                <span class="status" [class]="'status status-' + report.status.toLowerCase()">{{ statusLabel(report.status) }}</span>
+              </button>
+            }
+          </div>
+
+          <div class="pagination">
+            <button type="button" (click)="changePage(-1)" [disabled]="page === 0">Anterior</button>
+            <span>{{ page + 1 }} / {{ totalPages }}</span>
+            <button type="button" (click)="changePage(1)" [disabled]="page + 1 >= totalPages">Siguiente</button>
+          </div>
+        }
+      </main>
+
+      <aside class="panel detail-panel">
+        @if (!selected) {
+          <div class="state-box">Selecciona un reporte para ver el detalle.</div>
+        } @else {
+          <div class="detail-head">
+            <h2>{{ selected.reportedPlayerName }}</h2>
+            <span class="status" [class]="'status status-' + selected.status.toLowerCase()">{{ statusLabel(selected.status) }}</span>
+          </div>
+
+          <dl class="facts">
+            <dt>Motivo</dt>
+            <dd>{{ reasonLabel(selected.reason) }}</dd>
+            <dt>Reportado por</dt>
+            <dd>{{ selected.reporterName }}</dd>
+            <dt>Partido</dt>
+            <dd><a [routerLink]="['/partidos', selected.matchId]">{{ selected.matchTitle }}</a></dd>
+            <dt>Enviado</dt>
+            <dd>{{ selected.submittedAt | date:'d MMM y, HH:mm' }}</dd>
+          </dl>
+
+          <div class="details-box">
+            <span>Detalles</span>
+            <p>{{ selected.details || 'Sin detalles adicionales.' }}</p>
+          </div>
+
+          @if (selected.status === 'PENDING') {
+            <label class="note-field">
+              Nota de resolución (opcional)
+              <textarea [(ngModel)]="resolutionNote" rows="3" [maxlength]="noteMaxLength" [disabled]="resolving"
+                        placeholder="Ej.: se envió una advertencia al jugador"></textarea>
+            </label>
+            <p class="hint">
+              Para suspender la cuenta, hazlo desde
+              <a routerLink="/admin-users">Gestión de usuarios</a> y luego marca aquí "Tomar medidas".
+            </p>
+            <div class="actions">
+              <button type="button" class="btn-secondary" (click)="resolve('DISMISSED')" [disabled]="resolving">Descartar</button>
+              <button type="button" class="btn-primary" (click)="resolve('ACTION_TAKEN')" [disabled]="resolving">
+                {{ resolving ? 'Guardando...' : 'Tomar medidas' }}
+              </button>
+            </div>
+          } @else {
+            <div class="details-box">
+              <span>Resolución</span>
+              <p>{{ selected.resolutionNote || 'Sin nota.' }}</p>
+              <small>Revisado el {{ selected.reviewedAt | date:'d MMM y, HH:mm' }}</small>
+            </div>
+          }
+        }
+      </aside>
+    </div>
+  </div>
+</section>

@@ -17,6 +17,8 @@ export interface MatchResponse {
   requiresPlayerPayment: boolean;
   yapePhone: string | null;
   playerPaymentAmount: number | null;
+  /** Nombre visible del organizador y de cada participante, indexado por id de usuario. */
+  playerNames?: Record<number, string>;
 }
 
 export interface CreateMatchRequest {

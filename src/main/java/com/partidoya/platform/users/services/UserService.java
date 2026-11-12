@@ -10,6 +10,9 @@ import com.partidoya.platform.shared.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -26,6 +29,16 @@ public class UserService {
     @Transactional(readOnly = true)
     public Optional<User> findById(UserId userId) {
         return userRepository.findById(userId);
+    }
+
+    /** Nombres visibles de varios usuarios a la vez, indexados por id. */
+    @Transactional(readOnly = true)
+    public Map<Long, String> findDisplayNames(Collection<UserId> userIds) {
+        var names = new HashMap<Long, String>();
+        for (var user : userRepository.findAllByIds(userIds)) {
+            names.put(user.getId().value(), user.getFullName().value());
+        }
+        return names;
     }
 
     public User updateFullName(UserId userId, FullName fullName) {

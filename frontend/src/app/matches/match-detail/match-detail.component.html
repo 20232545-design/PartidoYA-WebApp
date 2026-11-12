@@ -59,7 +59,7 @@
           </div>
           <div class="info-card glass-card">
             <span class="info-card-label">Organizador</span>
-            <span class="info-card-value">{{ isOrganizer ? 'Tú' : 'Jugador #' + match.organizerId }}</span>
+            <span class="info-card-value">{{ isOrganizer ? 'Tú' : playerName(match.organizerId) }}</span>
           </div>
           <div class="info-card glass-card">
             <span class="info-card-label">Cupos</span>
@@ -118,7 +118,7 @@
               <span>Costo total</span><strong>S/ {{ match.price | number:'1.2-2' }}</strong>
               <span>Monto a pagar</span><strong>S/ {{ match.playerPaymentAmount | number:'1.2-2' }}</strong>
               <span>Numero de Yape</span><strong>{{ match.yapePhone }}</strong>
-              <span>Organizador</span><strong>Jugador #{{ match.organizerId }}</strong>
+              <span>Organizador</span><strong>{{ playerName(match.organizerId) }}</strong>
             </div>
             @if (currentUserJoinRequest) {
               <p class="proof-status">{{ joinRequestStatusLabel(currentUserJoinRequest.status) }}</p>
@@ -182,20 +182,26 @@
               @for (pid of match.participantIds; track pid) {
                 <li class="participant-item">
                   <span class="participant-avatar" [class.is-organizer]="pid === match.organizerId">
-                    {{ pid === match.organizerId ? 'O' : 'J' }}
+                    {{ initial(pid) }}
                   </span>
                   <span class="participant-name">
+                    {{ playerName(pid) }}
                     @if (pid === currentUserId) {
-                      Tú
+                      <small class="participant-tag">(Tú)</small>
                     } @else if (pid === match.organizerId) {
-                      Organizador
-                    } @else {
-                      Jugador #{{ pid }}
+                      <small class="participant-tag">(Organizador)</small>
                     }
                   </span>
-                  <button type="button" class="report-button" (click)="openReportModal(pid)" aria-label="Reportar jugador">
-                    ⚑
-                  </button>
+                  @if (canReport(pid)) {
+                    @if (isReported(pid)) {
+                      <span class="reported-tag" title="Ya reportaste a este jugador">Reportado</span>
+                    } @else {
+                      <button type="button" class="report-button" (click)="openReportModal(pid)"
+                              [attr.aria-label]="'Reportar a ' + playerName(pid)" [title]="'Reportar a ' + playerName(pid)">
+                        ⚑
+                      </button>
+                    }
+                  }
                 </li>
               }
             </ul>
@@ -213,29 +219,39 @@
     </div>
     @if (reportTargetId !== null) {
       <div class="report-modal-backdrop" (click)="closeReportModal()">
-        <div class="report-modal" (click)="$event.stopPropagation()">
+        <div class="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title"
+             (click)="$event.stopPropagation()">
           <div class="report-modal-header">
-            <h2>Reportar jugador #{{ reportTargetId }}</h2>
+            <h2 id="report-modal-title">Reportar a {{ playerName(reportTargetId) }}</h2>
             <button type="button" class="modal-close" (click)="closeReportModal()" aria-label="Cerrar">×</button>
           </div>
-          <div class="report-options">
-            @for (reason of reportReasons; track reason) {
+          <div class="report-options" role="radiogroup" aria-label="Motivo del reporte">
+            @for (reason of reportReasons; track reason.value) {
               <label>
-                <input type="radio" name="reportReason" [value]="reason" [(ngModel)]="reportReason">
-                {{ reason }}
+                <input type="radio" name="reportReason" [value]="reason.value" [(ngModel)]="reportReason"
+                       [disabled]="reportSubmitting">
+                {{ reason.label }}
               </label>
             }
           </div>
           <label class="report-details">
-            Detalles
-            <textarea [(ngModel)]="reportDetails" rows="4" placeholder="Agrega contexto opcional"></textarea>
+            Detalles{{ reportDetailsRequired ? ' (obligatorio)' : '' }}
+            <textarea [(ngModel)]="reportDetails" rows="4" [maxlength]="reportDetailsMaxLength"
+                      [disabled]="reportSubmitting"
+                      [placeholder]="reportDetailsRequired ? 'Cuéntanos qué pasó' : 'Agrega contexto opcional'"></textarea>
+            <small class="report-counter">{{ reportDetails.length }} / {{ reportDetailsMaxLength }}</small>
           </label>
+          @if (reportError) {
+            <p class="report-error" role="alert">{{ reportError }}</p>
+          }
           @if (reportConfirmation) {
-            <p class="report-confirmation">{{ reportConfirmation }}</p>
+            <p class="report-confirmation" role="status">{{ reportConfirmation }}</p>
           }
           <div class="report-actions">
-            <button type="button" class="btn-leave" (click)="closeReportModal()">Cancelar</button>
-            <button type="button" class="btn-cancel" (click)="submitReport()">Enviar reporte</button>
+            <button type="button" class="btn-leave" (click)="closeReportModal()" [disabled]="reportSubmitting">Cancelar</button>
+            <button type="button" class="btn-cancel" (click)="submitReport()" [disabled]="!canSubmitReport">
+              {{ reportSubmitting ? 'Enviando...' : 'Enviar reporte' }}
+            </button>
           </div>
         </div>
       </div>

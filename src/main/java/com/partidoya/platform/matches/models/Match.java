@@ -149,6 +149,13 @@ public class Match {
         return Collections.unmodifiableList(participants);
     }
 
+    /** Indica si el usuario forma parte del partido, ya sea como organizador o como participante. */
+    public boolean involves(UserId userId) {
+        if (userId == null) return false;
+        return organizerId.value().equals(userId.value())
+                || participants.stream().anyMatch(participant -> participant.value().equals(userId.value()));
+    }
+
     public int getAvailableSlots() {
         return totalSlots.value() - participants.size();
     }
