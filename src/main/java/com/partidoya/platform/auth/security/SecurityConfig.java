@@ -36,6 +36,10 @@ public class SecurityConfig {
                                 "/api/v1/payments/config",
                                 "/api/v1/matches",
                                 "/api/v1/matches/*",
+                                "/api/v1/teams",
+                                "/api/v1/teams/{id:[0-9]+}",
+                                "/api/v1/teams/{id:[0-9]+}/members",
+                                "/api/v1/teams/players/*",
                                 "/api/v1/courts",
                                 "/api/v1/courts/*",
                                 "/api/v1/courts/*/available-schedules").permitAll()

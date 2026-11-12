@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { BehaviorSubject, catchError, combineLatest, forkJoin, map, of, switchMap } from 'rxjs';
 import { AuthService } from '@app/auth/auth.service';
 import { MatchResponse, MatchService, PlayerJoinRequestResponse } from '@app/matches/match.service';
 import { UserService } from '@app/profiles/user.service';
 import { PaymentNotification } from './payment-notification.model';
 import { JoinRequestService } from '@app/matches/join-request.service';
+import { TeamService } from '@app/teams/team.service';
 
 export type { PaymentNotification } from './payment-notification.model';
 
@@ -12,21 +13,24 @@ export type { PaymentNotification } from './payment-notification.model';
 export class NotificationService {
   private readonly notificationsSubject = new BehaviorSubject<PaymentNotification[]>([]);
   readonly notifications$ = this.notificationsSubject.asObservable();
-  readonly pendingCount$ = this.notifications$.pipe(
-    map(notifications => notifications.filter(notification => this.isPending(notification)).length)
+  private readonly teamPendingSubject = new BehaviorSubject<number>(0);
+  readonly pendingCount$ = combineLatest([this.notifications$, this.teamPendingSubject]).pipe(
+    map(([notifications, teamPending]) => notifications.filter(notification => this.isPending(notification)).length + teamPending)
   );
 
   constructor(
     private authService: AuthService,
     private matchService: MatchService,
     private joinRequestService: JoinRequestService,
-    private userService: UserService
+    private userService: UserService,
+    private teamService: TeamService
   ) {}
 
   refresh(): void {
     const userId = this.authService.getUserId();
     if (!userId) {
       this.notificationsSubject.next([]);
+      this.teamPendingSubject.next(0);
       return;
     }
 
@@ -37,6 +41,12 @@ export class NotificationService {
     ).subscribe(notifications => {
       this.notificationsSubject.next(notifications);
     });
+    if (this.authService.isPlayerPlan()) {
+      this.teamService.mine().pipe(catchError(() => of(null))).subscribe(result =>
+        this.teamPendingSubject.next(result?.pendingCount || 0));
+    } else {
+      this.teamPendingSubject.next(0);
+    }
   }
 
   isPending(notification: PaymentNotification): boolean {

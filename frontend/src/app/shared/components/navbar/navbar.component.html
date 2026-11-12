@@ -6,6 +6,7 @@
       @if (!isLoggedIn || canUsePlayerFeatures) {
         <a routerLink="/deportes" class="nav-link">Partidos</a>
         <a routerLink="/canchas" class="nav-link">Canchas</a>
+        <a routerLink="/equipos" class="nav-link">Equipos</a>
       }
       @if (canManageCourts) {
         <a routerLink="/admin-canchas" class="nav-link">Administrar canchas</a>
@@ -49,6 +50,9 @@
                 <a routerLink="/admin-users" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Gestion de usuarios</a>
               }
               <a routerLink="/mi-perfil" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mi perfil</a>
+              @if (canUsePlayerFeatures) {
+                <a routerLink="/mis-equipos" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mis equipos</a>
+              }
               <a routerLink="/mi-suscripcion" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mi suscripción</a>
               <button type="button" class="dropdown-item" role="menuitem" (click)="logout()">Cerrar sesión</button>
             </div>

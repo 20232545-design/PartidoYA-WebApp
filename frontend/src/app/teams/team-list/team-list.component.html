@@ -1,0 +1,65 @@
+<main class="teams-page">
+  <div class="toolbar">
+    <div>
+      <span class="eyebrow">Comunidad</span>
+      <h1>Equipos permanentes</h1>
+    </div>
+    @if (auth.isPlayerPlan()) {
+      <a class="btn btn-primary" routerLink="/equipos/crear">Crear equipo</a>
+    }
+  </div>
+
+  <form class="filters" (ngSubmit)="load()">
+    <input [(ngModel)]="search" name="search" placeholder="Buscar por nombre">
+    <select [(ngModel)]="sport" name="sport">
+      <option value="">Todos los deportes</option>
+      <option>Fútbol</option>
+      <option>Básquet</option>
+      <option>Voleibol</option>
+      <option>Tenis</option>
+    </select>
+    <input [(ngModel)]="district" name="district" placeholder="Distrito">
+    <select [(ngModel)]="level" name="level">
+      <option value="">Todos los niveles</option>
+      <option value="BEGINNER">Básico</option>
+      <option value="INTERMEDIATE">Intermedio</option>
+      <option value="ADVANCED">Avanzado</option>
+    </select>
+    <label><input type="checkbox" [(ngModel)]="open" name="open"> Aceptan integrantes</label>
+    <button class="btn btn-primary">Buscar</button>
+  </form>
+
+  @if (loading) {
+    <div class="loading">Cargando equipos...</div>
+  } @else if (error) {
+    <div class="error">{{ error }}</div>
+  } @else if (!teams.length) {
+    <div class="empty">No encontramos equipos con esos filtros.</div>
+  } @else {
+    <section class="grid">
+      @for (team of teams; track team.id) {
+        <a class="card" [routerLink]="['/equipos', team.id]">
+          <div class="logo">
+            @if (team.logoUrl) {
+              <img class="logo" [src]="team.logoUrl" [alt]="'Escudo de ' + team.name">
+            } @else {
+              <span>{{ initial(team) }}</span>
+            }
+          </div>
+          <h2>{{ team.name }}</h2>
+          <div class="chips">
+            <span class="chip">{{ team.sport }}</span>
+            <span class="chip">{{ team.competitiveLevel }}</span>
+          </div>
+          <p class="muted">{{ team.district || 'Sin distrito' }} · {{ team.memberCount }} integrantes</p>
+          <p>{{ team.description }}</p>
+        </a>
+      }
+    </section>
+    <div class="pagination">
+      <button class="btn btn-secondary" [disabled]="page === 0" (click)="load(page - 1)">Anterior</button>
+      <span>{{ page + 1 }} / {{ totalPages }}</span>
+      <button class="btn btn-secondary" [disabled]="page + 1 >= totalPages" (click)="load(page + 1)">Siguiente</button>
+    </div>
+  }
+</main>

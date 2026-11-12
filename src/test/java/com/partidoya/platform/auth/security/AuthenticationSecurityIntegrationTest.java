@@ -52,6 +52,15 @@ class AuthenticationSecurityIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void teamDiscoveryIsPublicButPersonalTeamAreaRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/v1/teams"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/teams/mine"))
+                .andExpect(status().isUnauthorized());
+    }
+
     private RegisteredUser register(String email) throws Exception {
         var body = """
                 {

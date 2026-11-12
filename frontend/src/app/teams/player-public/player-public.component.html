@@ -1,0 +1,29 @@
+<main class="teams-page">
+  @if (loading) {
+    <div class="loading">Cargando perfil...</div>
+  } @else if (error) {
+    <div class="error">{{ error }}</div>
+  } @else if (player) {
+    <section class="card hero">
+      <div class="logo">
+        @if (player.avatarUrl) {
+          <img class="logo" [src]="player.avatarUrl" [alt]="player.publicName">
+        } @else {
+          <span>{{ player.publicName[0] }}</span>
+        }
+      </div>
+      <div>
+        <span class="eyebrow">Perfil público</span>
+        <h1>{{ player.publicName }}</h1>
+        <div class="chips">
+          <span class="chip">{{ player.primarySport || 'Deporte no indicado' }}</span>
+          <span class="chip">{{ level(player.skillLevel) }}</span>
+          @if (player.district) {
+            <span class="chip">{{ player.district }}</span>
+          }
+        </div>
+        <a class="btn btn-secondary" routerLink="/equipos">Volver a equipos</a>
+      </div>
+    </section>
+  }
+</main>

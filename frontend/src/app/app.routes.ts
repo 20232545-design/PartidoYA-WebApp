@@ -8,6 +8,7 @@ import { matchRoutes } from '@app/matches/matches.routes';
 import { notificationRoutes } from '@app/notifications/notification.routes';
 import { profileRoutes } from '@app/profiles/profiles.routes';
 import { subscriptionRoutes } from '@app/subscriptions/subscription.routes';
+import { teamRoutes } from '@app/teams/teams.routes';
 
 export const routes: Routes = [
   ...marketingRoutes,
@@ -17,6 +18,7 @@ export const routes: Routes = [
   ...courtRoutes,
   ...profileRoutes,
   ...subscriptionRoutes,
+  ...teamRoutes,
   ...notificationRoutes,
   ...administrationRoutes,
   {
