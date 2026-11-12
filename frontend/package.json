@@ -9,6 +9,7 @@
     "prebuild": "node scripts/generate-environment.mjs",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "pretest": "node scripts/generate-environment.mjs development",
     "test": "ng test"
   },
   "private": true,
