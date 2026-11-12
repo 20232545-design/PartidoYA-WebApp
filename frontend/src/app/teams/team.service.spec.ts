@@ -65,4 +65,17 @@ describe('TeamService', () => {
     service.challengeAction(9, 'rejected').subscribe();
     http.expectOne('http://localhost:8080/api/v1/teams/challenges/9/rejected').flush({});
   });
+
+  it('deduplicates my-teams reads and invalidates them after a mutation', () => {
+    const empty = { administered: [], memberships: [], invitations: [], challenges: [], pendingCount: 0 };
+    service.mine().subscribe();
+    service.mine().subscribe();
+    http.expectOne('http://localhost:8080/api/v1/teams/mine').flush(empty);
+
+    service.leave(4).subscribe();
+    http.expectOne('http://localhost:8080/api/v1/teams/4/leave').flush(null);
+
+    service.mine().subscribe();
+    http.expectOne('http://localhost:8080/api/v1/teams/mine').flush(empty);
+  });
 });
