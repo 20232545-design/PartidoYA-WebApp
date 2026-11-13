@@ -5,10 +5,13 @@ import com.partidoya.platform.users.models.UserId;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Getter
 public class Court {
@@ -114,8 +117,23 @@ public class Court {
         return active && published && availableForReservations;
     }
 
-    public boolean supportsSchedule(String schedule) {
-        return schedules.stream().anyMatch(s -> s.equalsIgnoreCase(schedule));
+    /**
+     * Turnos reservables de la cancha en una fecha ({@code "08:00-09:00"}), ordenados y sin repetir.
+     * Interpreta tanto turnos fijos como plantillas semanales; ignora entradas con formato desconocido.
+     */
+    public List<String> slotsOn(LocalDate date) {
+        return schedules.stream()
+                .map(CourtSchedule::parse)
+                .flatMap(Optional::stream)
+                .flatMap(schedule -> schedule.slotsOn(date).stream())
+                .map(CourtSchedule.TimeSlot::label)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    public boolean supportsSlot(LocalDate date, LocalTime start, LocalTime end) {
+        return slotsOn(date).contains(start + "-" + end);
     }
 
     public List<String> getSports() {

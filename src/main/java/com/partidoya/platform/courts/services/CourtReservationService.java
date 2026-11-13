@@ -138,12 +138,11 @@ public class CourtReservationService {
     }
 
     private void requireSupportedSchedule(Court court, CourtReservationRequest request) {
-        var schedule = "%s-%s".formatted(request.startTime(), request.endTime());
         var availability = availabilityRepository.findByCourtIdAndDate(request.courtId(), request.date());
         var explicitlyAvailable = availability.stream()
                 .filter(item -> item.getType() == CourtAvailabilityType.AVAILABLE)
                 .anyMatch(item -> item.contains(request.date(), request.startTime(), request.endTime()));
-        if (!court.supportsSchedule(schedule) && !explicitlyAvailable) {
+        if (!court.supportsSlot(request.date(), request.startTime(), request.endTime()) && !explicitlyAvailable) {
             throw new IllegalStateException("Selected schedule is not available for this court");
         }
     }

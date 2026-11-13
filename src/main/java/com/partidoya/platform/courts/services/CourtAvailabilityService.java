@@ -105,7 +105,7 @@ public class CourtAvailabilityService {
         var court = accessPolicy.requireReservableCourt(courtId);
         var date = requestedDate == null ? LocalDate.now() : requestedDate;
         var availability = availabilityRepository.findByCourtIdAndDate(courtId, date);
-        var schedules = new ArrayList<>(court.getSchedules());
+        var schedules = new ArrayList<>(court.slotsOn(date));
         availability.stream()
                 .filter(item -> item.getType() == CourtAvailabilityType.AVAILABLE)
                 .flatMap(item -> schedulesWithin(item.getStartTime(), item.getEndTime()).stream())

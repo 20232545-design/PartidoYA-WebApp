@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -123,8 +122,10 @@ public class CourtReportService {
                 .toList();
     }
 
+    /** Turnos reales de cada día del rango: con horarios semanales la cantidad varía según el día. */
     private long possibleSlots(List<Court> courts, LocalDate from, LocalDate to) {
-        var days = ChronoUnit.DAYS.between(from, to) + 1;
-        return courts.stream().mapToLong(court -> (long) court.getSchedules().size() * days).sum();
+        return from.datesUntil(to.plusDays(1))
+                .mapToLong(date -> courts.stream().mapToLong(court -> court.slotsOn(date).size()).sum())
+                .sum();
     }
 }
