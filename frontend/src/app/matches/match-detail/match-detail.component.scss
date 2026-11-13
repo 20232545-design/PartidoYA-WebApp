@@ -572,6 +572,21 @@
   }
 }
 
+.btn-proof-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.62);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:hover {
+    color: #c6f135;
+  }
+}
+
 .report-button {
   margin-left: auto;
   width: 28px;

@@ -1,6 +1,8 @@
 package com.partidoya.platform.matches.controllers;
 
 import com.partidoya.platform.users.models.UserId;
+import com.partidoya.platform.users.services.UserService;
+import com.partidoya.platform.matches.models.PlayerJoinRequest;
 import com.partidoya.platform.matches.models.MatchId;
 import com.partidoya.platform.matches.storage.PaymentProofStorage;
 import com.partidoya.platform.matches.dto.PlayerJoinRequestResource;
@@ -27,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
@@ -38,13 +41,29 @@ public class PlayerJoinRequestsController {
     private final JoinRequestService joinRequestService;
     private final PaymentProofStorage proofStorage;
     private final CurrentUserService currentUserService;
+    private final UserService userService;
 
     public PlayerJoinRequestsController(JoinRequestService joinRequestService,
                                         PaymentProofStorage proofStorage,
-                                        CurrentUserService currentUserService) {
+                                        CurrentUserService currentUserService,
+                                        UserService userService) {
         this.joinRequestService = joinRequestService;
         this.proofStorage = proofStorage;
         this.currentUserService = currentUserService;
+        this.userService = userService;
+    }
+
+    /** Resuelve los nombres de todos los jugadores con una sola consulta. */
+    private List<PlayerJoinRequestResource> toResources(List<PlayerJoinRequest> requests, Long requesterId) {
+        Map<Long, String> names = userService.findDisplayNames(
+                requests.stream().map(PlayerJoinRequest::getPlayerId).distinct().toList());
+        return requests.stream()
+                .map(request -> PlayerJoinRequestResourceFromEntityAssembler.toResourceFromEntity(request, requesterId, names))
+                .toList();
+    }
+
+    private PlayerJoinRequestResource toResource(PlayerJoinRequest request, Long requesterId) {
+        return toResources(List.of(request), requesterId).getFirst();
     }
 
     @PostMapping(consumes = MULTIPART_FORM_DATA_VALUE, produces = APPLICATION_JSON_VALUE)
@@ -55,31 +74,29 @@ public class PlayerJoinRequestsController {
         var stored = proofStorage.store(proof.getOriginalFilename(), proof.getContentType(), proof.getSize(),
                 proof.getInputStream());
         var request = joinRequestService.submitProof(new MatchId(matchId), authenticatedUserId, stored);
-        return ResponseEntity.ok(PlayerJoinRequestResourceFromEntityAssembler.toResourceFromEntity(request, userId));
+        return ResponseEntity.ok(toResource(request, userId));
     }
 
     @GetMapping(produces = APPLICATION_JSON_VALUE)
     public ResponseEntity<List<PlayerJoinRequestResource>> listRequests(@PathVariable Long matchId,
                                                                         @RequestParam Long requesterId) {
         var authenticatedUserId = currentUserService.requireSelf(requesterId);
-        var requests = joinRequestService.findAuthorized(new MatchId(matchId), authenticatedUserId).stream()
-                .map(request -> PlayerJoinRequestResourceFromEntityAssembler.toResourceFromEntity(request, requesterId))
-                .toList();
-        return ResponseEntity.ok(requests);
+        var requests = joinRequestService.findAuthorized(new MatchId(matchId), authenticatedUserId);
+        return ResponseEntity.ok(toResources(requests, requesterId));
     }
 
     @PostMapping(value = "/{requestId}/approve", produces = APPLICATION_JSON_VALUE)
     public ResponseEntity<PlayerJoinRequestResource> approve(@PathVariable Long requestId,
                                                              @RequestParam Long reviewerId) {
         var request = joinRequestService.approve(requestId, currentUserService.requireSelf(reviewerId));
-        return ResponseEntity.ok(PlayerJoinRequestResourceFromEntityAssembler.toResourceFromEntity(request, reviewerId));
+        return ResponseEntity.ok(toResource(request, reviewerId));
     }
 
     @PostMapping(value = "/{requestId}/reject", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
     public ResponseEntity<PlayerJoinRequestResource> reject(@PathVariable Long requestId,
                                                             @RequestBody RejectJoinRequestResource resource) {
         var request = joinRequestService.reject(requestId, currentUserService.requireSelf(resource.reviewerId()), resource.rejectionReason());
-        return ResponseEntity.ok(PlayerJoinRequestResourceFromEntityAssembler.toResourceFromEntity(request, resource.reviewerId()));
+        return ResponseEntity.ok(toResource(request, resource.reviewerId()));
     }
 
     @GetMapping("/{requestId}/proof")

@@ -5,13 +5,16 @@ import com.partidoya.platform.users.repositories.UserRepository;
 import com.partidoya.platform.users.services.PlanPolicy;
 import com.partidoya.platform.matches.models.PlayerJoinRequest;
 import com.partidoya.platform.matches.models.JoinRequestStatus;
+import com.partidoya.platform.matches.models.MatchEvent;
 import com.partidoya.platform.matches.models.MatchId;
+import com.partidoya.platform.matches.models.MatchStatus;
 import com.partidoya.platform.matches.repositories.MatchRepository;
 import com.partidoya.platform.matches.repositories.PlayerJoinRequestRepository;
 import com.partidoya.platform.matches.storage.StoredPaymentProof;
 import com.partidoya.platform.shared.exceptions.ForbiddenActionException;
 import com.partidoya.platform.shared.exceptions.ResourceConflictException;
 import com.partidoya.platform.shared.exceptions.ResourceNotFoundException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,14 +27,17 @@ public class JoinRequestService {
     private final PlayerJoinRequestRepository joinRequestRepository;
     private final MatchRepository matchRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public JoinRequestService(
             PlayerJoinRequestRepository joinRequestRepository,
             MatchRepository matchRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.joinRequestRepository = joinRequestRepository;
         this.matchRepository = matchRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public PlayerJoinRequest submitProof(MatchId matchId, UserId playerId, StoredPaymentProof proof) {
@@ -81,8 +87,14 @@ public class JoinRequestService {
         requireOrganizer(match.getOrganizerId(), reviewerId);
         match.confirmParticipant(request.getPlayerId());
         request.approve(reviewerId);
-        matchRepository.save(match);
-        return joinRequestRepository.save(request);
+        var savedMatch = matchRepository.save(match);
+        var savedRequest = joinRequestRepository.save(request);
+        eventPublisher.publishEvent(new MatchEvent.PaymentApproved(
+                savedMatch.getId(), reviewerId, savedRequest.getPlayerId()));
+        if (savedMatch.getStatus() == MatchStatus.FULL) {
+            eventPublisher.publishEvent(new MatchEvent.MatchFilled(savedMatch.getId(), reviewerId));
+        }
+        return savedRequest;
     }
 
     public PlayerJoinRequest reject(Long requestId, UserId reviewerId, String reason) {
@@ -93,7 +105,10 @@ public class JoinRequestService {
                         request.getMatchId().value().toString()));
         requireOrganizer(match.getOrganizerId(), reviewerId);
         request.reject(reviewerId, reason);
-        return joinRequestRepository.save(request);
+        var savedRequest = joinRequestRepository.save(request);
+        eventPublisher.publishEvent(new MatchEvent.PaymentRejected(
+                request.getMatchId(), reviewerId, savedRequest.getPlayerId(), savedRequest.getRejectionReason()));
+        return savedRequest;
     }
 
     @Transactional(readOnly = true)

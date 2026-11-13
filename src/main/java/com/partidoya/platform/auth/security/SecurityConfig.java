@@ -31,6 +31,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers("/actuator/health", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/v1/auth/**", "/api/v1/subscriptions/webhooks/culqi").permitAll()
+                        // El handshake WebSocket es anónimo: la sesión STOMP se autentica en el frame CONNECT
+                        // (StompAuthenticationInterceptor) y cada suscripción se autoriza por separado.
+                        .requestMatchers("/ws").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/subscription-plans",
                                 "/api/v1/payments/config",

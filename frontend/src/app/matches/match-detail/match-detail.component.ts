@@ -1,5 +1,7 @@
-import { Component, OnInit, ChangeDetectorRef, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, DestroyRef, ElementRef, ViewChild, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
+import { filter } from 'rxjs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatchService, MatchResponse, PlayerJoinRequestResponse } from '@app/matches/match.service';
@@ -7,10 +9,11 @@ import { AuthService } from '@app/auth/auth.service';
 import { MapsLoaderService } from '@shared/services/maps-loader.service';
 import { OpenMapService } from '@shared/services/open-map.service';
 import { GeolocationService } from '@shared/services/geolocation.service';
-import { environment } from '@env/environment';
 import { NotificationService } from '@app/notifications/notification.service';
 import { JoinRequestService } from '@app/matches/join-request.service';
 import { PlayerReportService } from '@app/matches/player-report.service';
+import { MatchChatComponent } from '@app/matches/match-chat/match-chat.component';
+import { MatchNotificationService } from '@app/notifications/match-notification.service';
 import {
   REPORT_DETAILS_MAX_LENGTH,
   REPORT_REASON_OPTIONS,
@@ -19,7 +22,7 @@ import {
 
 @Component({
   selector: 'app-match-detail',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, MatchChatComponent],
   templateUrl: './match-detail.component.html',
   styleUrl: './match-detail.component.scss'
 })
@@ -51,6 +54,8 @@ export class MatchDetailComponent implements OnInit {
   reportedPlayerIds = new Set<number>();
   readonly reportReasons = REPORT_REASON_OPTIONS;
   readonly reportDetailsMaxLength = REPORT_DETAILS_MAX_LENGTH;
+  private readonly matchNotificationService = inject(MatchNotificationService);
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor(
     private matchService: MatchService,
@@ -73,6 +78,26 @@ export class MatchDetailComponent implements OnInit {
       return;
     }
     this.loadMatch(id);
+    // Si llega en vivo una novedad de este partido (alguien se unió, se canceló…), refrescamos sus datos.
+    this.matchNotificationService.received$
+      .pipe(
+        // Los avisos de chat no cambian los datos del partido.
+        filter(notification => notification.matchId === id && notification.type !== 'CHAT_MESSAGES'),
+        takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshMatch(id));
+  }
+
+  /** Actualiza los datos del partido sin volver a dibujar el mapa. */
+  private refreshMatch(id: number): void {
+    this.matchService.getMatchById(id).subscribe({
+      next: (data) => {
+        this.match = data;
+        this.loadJoinRequests();
+        this.cdr.detectChanges();
+      },
+      // No es crítico: la pantalla conserva los últimos datos mostrados.
+      error: () => {}
+    });
   }
 
   private loadMatch(id: number): void {
@@ -330,8 +355,29 @@ export class MatchDetailComponent implements OnInit {
     });
   }
 
-  proofUrl(request: PlayerJoinRequestResponse): string {
-    return `${environment.apiUrl.replace('/api/v1', '')}${request.proofUrl}`;
+  /**
+   * Abre el comprobante en otra pestaña. Se descarga con el token (un enlace directo daría 401) y la pestaña
+   * se abre en el mismo clic, antes de la descarga, para que el navegador no la bloquee como ventana emergente.
+   */
+  openProof(request: PlayerJoinRequestResponse): void {
+    const proofTab = window.open('', '_blank');
+    this.joinRequestService.getProofImage(request.proofUrl).subscribe({
+      next: (image) => {
+        const imageUrl = URL.createObjectURL(image);
+        if (proofTab) {
+          proofTab.location.href = imageUrl;
+        } else {
+          window.open(imageUrl, '_blank');
+        }
+        // La pestaña ya cargó la imagen; liberamos la memoria después de un margen prudente.
+        setTimeout(() => URL.revokeObjectURL(imageUrl), 60_000);
+      },
+      error: () => {
+        proofTab?.close();
+        this.errorMessage = 'No se pudo abrir el comprobante.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   onProofSelected(event: Event): void {

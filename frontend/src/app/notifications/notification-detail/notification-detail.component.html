@@ -16,7 +16,7 @@
             <div class="meta-grid">
               <div>
                 <span>Jugador</span>
-                <strong>{{ player?.fullName || ('Jugador #' + request.playerId) }}</strong>
+                <strong>{{ request.playerName }}</strong>
               </div>
               <div>
                 <span>Partido</span>
@@ -35,7 +35,13 @@
 
           <div class="panel proof-panel">
             <h2>Imagen adjunta</h2>
-            <img [src]="proofUrl" alt="Comprobante de Yape adjunto">
+            @if (proofImageUrl) {
+              <img [src]="proofImageUrl" alt="Comprobante de Yape adjunto">
+            } @else if (proofLoading) {
+              <p class="proof-status">Cargando comprobante…</p>
+            } @else if (proofError) {
+              <p class="proof-status">{{ proofError }}</p>
+            }
           </div>
         </main>
 

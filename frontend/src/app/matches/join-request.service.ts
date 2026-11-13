@@ -6,9 +6,21 @@ import { PlayerJoinRequestResponse } from './match.models';
 
 @Injectable({ providedIn: 'root' })
 export class JoinRequestService {
-  private readonly apiUrl = `${inject(API_BASE_URL)}/matches`;
+  private readonly baseUrl = inject(API_BASE_URL);
+  private readonly apiUrl = `${this.baseUrl}/matches`;
 
   constructor(private http: HttpClient) {}
+
+  /**
+   * Descarga la imagen del comprobante. Va por HttpClient para que el interceptor agregue el token:
+   * un `<img src>` o un enlace directo los pide el navegador sin `Authorization` y el backend responde 401.
+   *
+   * @param proofPath ruta que devuelve el backend en `proofUrl`, por ejemplo `/api/v1/matches/3/join-requests/1/proof?...`
+   */
+  getProofImage(proofPath: string): Observable<Blob> {
+    const origin = this.baseUrl.replace(/\/api\/v1\/?$/, '');
+    return this.http.get(`${origin}${proofPath}`, { responseType: 'blob' });
+  }
 
   submitProof(matchId: number, userId: number, proof: File): Observable<PlayerJoinRequestResponse> {
     const formData = new FormData();

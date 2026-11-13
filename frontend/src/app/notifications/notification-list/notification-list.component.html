@@ -2,40 +2,91 @@
   <div class="container">
     <header class="notifications-header">
       <span>Notificaciones</span>
-      <h1>Solicitudes con comprobante</h1>
-      <p>Revisa los pagos enviados por jugadores para unirse a tus pichangas.</p>
+      <h1>Novedades de tus partidos</h1>
+      <p>Confirmaciones, cambios y cancelaciones de los partidos que organizas o en los que estás inscrito.</p>
     </header>
 
-    @if (notificationService.notifications$ | async; as notifications) {
-      @if (notifications.length === 0) {
-        <div class="empty-state">
-          <h2>No hay notificaciones pendientes</h2>
-          <p>Cuando alguien adjunte un comprobante de Yape, aparecerá aquí automáticamente.</p>
-        </div>
-      } @else {
-        <div class="notifications-list">
-          @for (notification of notifications; track notification.id) {
-            <a
-              class="notification-card"
-              [class.pending]="notificationService.isPending(notification)"
-              [routerLink]="['/notificaciones', notification.matchId, notification.requestId]">
-              <div>
-                <div class="notification-topline">
-                  <strong>{{ notification.playerName }}</strong>
-                  <span [class]="'status status-' + notification.status.toLowerCase()">
-                    {{ statusLabel(notification.status) }}
-                  </span>
-                </div>
-                <h2>{{ notification.matchTitle }}</h2>
-                <p>{{ formatDate(notification.submittedAt) }}</p>
-              </div>
-              @if (notification.hasProof) {
-                <span class="proof-pill">Comprobante adjunto</span>
-              }
-            </a>
+    @if (matchNotificationService.notifications$ | async; as activity) {
+      <section class="notifications-section" aria-labelledby="activity-title">
+        <div class="section-heading">
+          <h2 id="activity-title">Actividad</h2>
+          @if ((matchNotificationService.unreadCount$ | async) ?? 0; as unread) {
+            @if (unread > 0) {
+              <button type="button" class="mark-all" (click)="matchNotificationService.markAllAsRead()">
+                Marcar todas como leídas
+              </button>
+            }
           }
         </div>
-      }
+
+        @if (activity.length === 0) {
+          <div class="empty-state">
+            <h2>Sin novedades por ahora</h2>
+            <p>Te avisaremos aquí, al instante, cuando algo cambie en tus partidos.</p>
+          </div>
+        } @else {
+          <div class="notifications-list">
+            @for (notification of activity; track notification.id) {
+              <button
+                type="button"
+                class="notification-card activity-card"
+                [class.unread]="!notification.read"
+                (click)="openMatchNotification(notification)">
+                <div>
+                  <div class="notification-topline">
+                    <span [class]="'status type-' + notification.type.toLowerCase()">
+                      {{ typeLabel(notification.type) }}
+                    </span>
+                    @if (!notification.read) {
+                      <span class="unread-dot" aria-label="No leída"></span>
+                    }
+                  </div>
+                  <h3>{{ notification.message }}</h3>
+                  <p>{{ formatDate(notification.occurredAt) }}</p>
+                </div>
+              </button>
+            }
+          </div>
+        }
+      </section>
     }
+
+    <section class="notifications-section" aria-labelledby="payments-title">
+      <div class="section-heading">
+        <h2 id="payments-title">Solicitudes con comprobante</h2>
+      </div>
+
+      @if (notificationService.notifications$ | async; as notifications) {
+        @if (notifications.length === 0) {
+          <div class="empty-state">
+            <h2>No hay comprobantes pendientes</h2>
+            <p>Cuando alguien adjunte un comprobante de Yape, aparecerá aquí automáticamente.</p>
+          </div>
+        } @else {
+          <div class="notifications-list">
+            @for (notification of notifications; track notification.id) {
+              <a
+                class="notification-card"
+                [class.pending]="notificationService.isPending(notification)"
+                [routerLink]="['/notificaciones', notification.matchId, notification.requestId]">
+                <div>
+                  <div class="notification-topline">
+                    <strong>{{ notification.playerName }}</strong>
+                    <span [class]="'status status-' + notification.status.toLowerCase()">
+                      {{ statusLabel(notification.status) }}
+                    </span>
+                  </div>
+                  <h3>{{ notification.matchTitle }}</h3>
+                  <p>{{ formatDate(notification.submittedAt) }}</p>
+                </div>
+                @if (notification.hasProof) {
+                  <span class="proof-pill">Comprobante adjunto</span>
+                }
+              </a>
+            }
+          </div>
+        }
+      }
+    </section>
   </div>
 </section>

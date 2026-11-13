@@ -41,6 +41,8 @@ export interface PlayerJoinRequestResponse {
   id: number;
   matchId: number;
   playerId: number;
+  /** Nombre visible del jugador que envió el comprobante. */
+  playerName: string;
   proofUrl: string;
   originalFileName: string;
   amount: number;

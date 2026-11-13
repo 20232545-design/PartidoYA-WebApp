@@ -7,12 +7,14 @@ import com.partidoya.platform.users.repositories.UserRepository;
 import com.partidoya.platform.users.services.PlanPolicy;
 import com.partidoya.platform.matches.models.Match;
 import com.partidoya.platform.matches.models.CreateMatchCommand;
+import com.partidoya.platform.matches.models.MatchEvent;
 import com.partidoya.platform.matches.models.MatchId;
 import com.partidoya.platform.matches.models.MatchPrice;
 import com.partidoya.platform.matches.models.MatchStatus;
 import com.partidoya.platform.matches.repositories.MatchRepository;
 import com.partidoya.platform.shared.exceptions.ForbiddenActionException;
 import com.partidoya.platform.shared.exceptions.ResourceNotFoundException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,14 +27,17 @@ public class MatchService {
     private final MatchRepository matchRepository;
     private final UserRepository userRepository;
     private final ReservationRepository reservationRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public MatchService(
             MatchRepository matchRepository,
             UserRepository userRepository,
-            ReservationRepository reservationRepository) {
+            ReservationRepository reservationRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.matchRepository = matchRepository;
         this.userRepository = userRepository;
         this.reservationRepository = reservationRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public Match create(CreateMatchCommand request) {
@@ -44,20 +49,29 @@ public class MatchService {
         var match = requireMatch(matchId);
         requirePlayer(userId, "join matches");
         match.join(userId);
-        return matchRepository.save(match);
+        var saved = matchRepository.save(match);
+        eventPublisher.publishEvent(new MatchEvent.PlayerJoined(matchId, userId));
+        if (saved.getStatus() == MatchStatus.FULL) {
+            eventPublisher.publishEvent(new MatchEvent.MatchFilled(matchId, userId));
+        }
+        return saved;
     }
 
     public Match leave(MatchId matchId, UserId userId) {
         var match = requireMatch(matchId);
         requirePlayer(userId, "leave matches");
         match.leave(userId);
-        return matchRepository.save(match);
+        var saved = matchRepository.save(match);
+        eventPublisher.publishEvent(new MatchEvent.PlayerLeft(matchId, userId));
+        return saved;
     }
 
     public Match cancel(MatchId matchId, UserId requesterId) {
         var match = requireMatch(matchId);
         match.cancel(requesterId);
-        return matchRepository.save(match);
+        var saved = matchRepository.save(match);
+        eventPublisher.publishEvent(new MatchEvent.MatchCancelled(matchId, requesterId));
+        return saved;
     }
 
     @Transactional(readOnly = true)

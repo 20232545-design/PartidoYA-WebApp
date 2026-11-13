@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { API_BASE_URL } from '@shared/services/api-base-url.token';
 import { reportReasonLabel } from '@shared/models/player-report.models';
 import { PlayerReportService } from './player-report.service';
+import { JoinRequestService } from './join-request.service';
 
 describe('PlayerReportService', () => {
   let service: PlayerReportService;
@@ -40,6 +41,36 @@ describe('PlayerReportService', () => {
     http.expectOne('http://api.test/api/v1/matches/5/reports/mine').flush([7, 18]);
 
     expect(reported).toEqual([7, 18]);
+  });
+});
+
+describe('JoinRequestService.getProofImage', () => {
+  let service: JoinRequestService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: API_BASE_URL, useValue: 'http://api.test/api/v1' }
+      ]
+    });
+    service = TestBed.inject(JoinRequestService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('downloads the proof through HttpClient so the session token is attached', () => {
+    let received: Blob | null = null;
+    service.getProofImage('/api/v1/matches/3/join-requests/1/proof?requesterId=7').subscribe(image => (received = image));
+
+    const request = http.expectOne('http://api.test/api/v1/matches/3/join-requests/1/proof?requesterId=7');
+    expect(request.request.responseType).toBe('blob');
+    request.flush(new Blob(['jpeg'], { type: 'image/jpeg' }));
+
+    expect(received).toBeInstanceOf(Blob);
   });
 });
 

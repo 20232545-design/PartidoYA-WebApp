@@ -156,10 +156,10 @@
               @for (request of joinRequests; track request.id) {
                 <div class="proof-review">
                   <div>
-                    <strong>Jugador #{{ request.playerId }}</strong>
+                    <strong>{{ request.playerName }}</strong>
                     <span>S/ {{ request.amount | number:'1.2-2' }} · {{ request.status }}</span>
                   </div>
-                  <a [href]="proofUrl(request)" target="_blank" rel="noopener">Ver comprobante</a>
+                  <button type="button" class="btn-proof-link" (click)="openProof(request)">Ver comprobante</button>
                   @if (request.status === 'PENDING_PAYMENT_VERIFICATION') {
                     <button class="btn-join" (click)="approveRequest(request)">Aprobar</button>
                     <input type="text" [(ngModel)]="rejectReason" placeholder="Motivo opcional">
@@ -169,6 +169,13 @@
               }
             }
           </div>
+        }
+
+        @if (isOrganizer || hasJoined) {
+          <app-match-chat
+            [matchId]="match.id"
+            [currentUserId]="currentUserId"
+            [canPost]="match.status !== 'CANCELLED'" />
         }
       </div>
 

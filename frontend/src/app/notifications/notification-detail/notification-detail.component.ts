@@ -1,12 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { environment } from '@env/environment';
-import { AuthService, UserResponse } from '@app/auth/auth.service';
+import { AuthService } from '@app/auth/auth.service';
 import { MatchResponse, MatchService, PlayerJoinRequestResponse } from '@app/matches/match.service';
 import { NotificationService } from '@app/notifications/notification.service';
-import { UserService } from '@app/profiles/user.service';
 import { JoinRequestService } from '@app/matches/join-request.service';
 
 @Component({
@@ -15,15 +13,17 @@ import { JoinRequestService } from '@app/matches/join-request.service';
   templateUrl: './notification-detail.component.html',
   styleUrl: './notification-detail.component.scss'
 })
-export class NotificationDetailComponent implements OnInit {
+export class NotificationDetailComponent implements OnInit, OnDestroy {
   match: MatchResponse | null = null;
   request: PlayerJoinRequestResponse | null = null;
-  player: UserResponse | null = null;
   reviewMessage = '';
   loading = true;
   processing = false;
   errorMessage = '';
   successMessage = '';
+  proofImageUrl: string | null = null;
+  proofLoading = false;
+  proofError = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -31,7 +31,6 @@ export class NotificationDetailComponent implements OnInit {
     private authService: AuthService,
     private matchService: MatchService,
     private joinRequestService: JoinRequestService,
-    private userService: UserService,
     private notificationService: NotificationService
   ) {}
 
@@ -50,9 +49,31 @@ export class NotificationDetailComponent implements OnInit {
     return !!this.request && this.request.status === 'PENDING_PAYMENT_VERIFICATION' && !this.processing;
   }
 
-  get proofUrl(): string {
-    if (!this.request) return '';
-    return `${environment.apiUrl.replace('/api/v1', '')}${this.request.proofUrl}`;
+  ngOnDestroy(): void {
+    this.releaseProofImage();
+  }
+
+  /** Descarga el comprobante con el token de sesión y lo muestra desde memoria (URL `blob:`). */
+  private loadProofImage(proofPath: string): void {
+    this.proofLoading = true;
+    this.proofError = '';
+    this.joinRequestService.getProofImage(proofPath).subscribe({
+      next: (image) => {
+        this.releaseProofImage();
+        this.proofImageUrl = URL.createObjectURL(image);
+        this.proofLoading = false;
+      },
+      error: () => {
+        this.proofLoading = false;
+        this.proofError = 'No se pudo cargar la imagen del comprobante.';
+      }
+    });
+  }
+
+  /** Libera la memoria de la imagen anterior. */
+  private releaseProofImage(): void {
+    if (this.proofImageUrl) URL.revokeObjectURL(this.proofImageUrl);
+    this.proofImageUrl = null;
   }
 
   approve(): void {
@@ -107,24 +128,13 @@ export class NotificationDetailComponent implements OnInit {
               this.loading = false;
               return;
             }
-            this.loadPlayer(this.request.playerId);
+            this.loading = false;
+            this.loadProofImage(this.request.proofUrl);
           },
           error: (err) => this.handleLoadError(err)
         });
       },
       error: (err) => this.handleLoadError(err)
-    });
-  }
-
-  private loadPlayer(playerId: number): void {
-    this.userService.getUserById(playerId).subscribe({
-      next: (player) => {
-        this.player = player;
-        this.loading = false;
-      },
-      error: () => {
-        this.loading = false;
-      }
     });
   }
 

@@ -28,9 +28,81 @@
   }
 }
 
+.notifications-section {
+  margin-top: 2rem;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+
+  h2 {
+    font-size: 1.15rem;
+    font-weight: 900;
+  }
+}
+
+.mark-all {
+  border: 0;
+  background: none;
+  color: #c6f135;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .notifications-list {
   display: grid;
   gap: 0.85rem;
+}
+
+.activity-card {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:not(.unread) {
+    opacity: 0.72;
+  }
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c6f135;
+}
+
+.type-match_cancelled,
+.type-payment_rejected {
+  background: rgba(248, 113, 113, 0.16);
+  color: #fca5a5;
+}
+
+.type-payment_approved,
+.type-match_full {
+  background: rgba(74, 222, 128, 0.14);
+  color: #86efac;
+}
+
+.type-chat_messages {
+  background: rgba(198, 241, 53, 0.14);
+  color: #c6f135;
+}
+
+.type-player_joined,
+.type-player_left {
+  background: rgba(59, 130, 246, 0.14);
+  color: #93c5fd;
 }
 
 .notification-card,
@@ -55,13 +127,15 @@
     transform: translateY(-1px);
   }
 
-  &.pending {
+  &.pending,
+  &.unread {
     border-color: rgba(198, 241, 53, 0.28);
   }
 
-  h2 {
+  h3 {
     margin-top: 0.3rem;
     font-size: 1rem;
+    line-height: 1.4;
   }
 
   p {

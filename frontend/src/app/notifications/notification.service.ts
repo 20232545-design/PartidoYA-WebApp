@@ -1,28 +1,33 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, catchError, combineLatest, forkJoin, map, of, switchMap } from 'rxjs';
 import { AuthService } from '@app/auth/auth.service';
 import { MatchResponse, MatchService, PlayerJoinRequestResponse } from '@app/matches/match.service';
-import { UserService } from '@app/profiles/user.service';
 import { PaymentNotification } from './payment-notification.model';
 import { JoinRequestService } from '@app/matches/join-request.service';
 import { TeamService } from '@app/teams/team.service';
+import { MatchNotificationService } from './match-notification.service';
 
 export type { PaymentNotification } from './payment-notification.model';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
+  private readonly matchNotificationService = inject(MatchNotificationService);
   private readonly notificationsSubject = new BehaviorSubject<PaymentNotification[]>([]);
   readonly notifications$ = this.notificationsSubject.asObservable();
   private readonly teamPendingSubject = new BehaviorSubject<number>(0);
-  readonly pendingCount$ = combineLatest([this.notifications$, this.teamPendingSubject]).pipe(
-    map(([notifications, teamPending]) => notifications.filter(notification => this.isPending(notification)).length + teamPending)
+  readonly pendingCount$ = combineLatest([
+    this.notifications$,
+    this.teamPendingSubject,
+    this.matchNotificationService.unreadCount$
+  ]).pipe(
+    map(([notifications, teamPending, unreadMatchNotifications]) =>
+      notifications.filter(notification => this.isPending(notification)).length + teamPending + unreadMatchNotifications)
   );
 
   constructor(
     private authService: AuthService,
     private matchService: MatchService,
     private joinRequestService: JoinRequestService,
-    private userService: UserService,
     private teamService: TeamService
   ) {}
 
@@ -31,12 +36,19 @@ export class NotificationService {
     if (!userId) {
       this.notificationsSubject.next([]);
       this.teamPendingSubject.next(0);
+      this.matchNotificationService.stop();
       return;
+    }
+
+    // Solo los jugadores organizan o se inscriben en partidos, que es lo que generan estas notificaciones.
+    if (this.authService.isPlayerPlan()) {
+      this.matchNotificationService.start(userId);
+    } else {
+      this.matchNotificationService.stop();
     }
 
     this.matchService.getMatchesByOrganizer(userId).pipe(
       switchMap(matches => this.loadRequestsForMatches(matches, userId)),
-      switchMap(notifications => this.attachPlayerNames(notifications)),
       catchError(() => of([]))
     ).subscribe(notifications => {
       this.notificationsSubject.next(notifications);
@@ -67,33 +79,13 @@ export class NotificationService {
     );
   }
 
-  private attachPlayerNames(notifications: PaymentNotification[]) {
-    const uniquePlayerIds = [...new Set(notifications.map(notification => notification.playerId))];
-    if (uniquePlayerIds.length === 0) return of(notifications);
-
-    return forkJoin(uniquePlayerIds.map(id =>
-      this.userService.getUserById(id).pipe(catchError(() => of(null)))
-    )).pipe(
-      map(users => {
-        const names = new Map<number, string>();
-        users.forEach(user => {
-          if (user) names.set(user.id, user.fullName);
-        });
-        return notifications.map(notification => ({
-          ...notification,
-          playerName: names.get(notification.playerId) || notification.playerName
-        }));
-      })
-    );
-  }
-
   private toNotification(match: MatchResponse, request: PlayerJoinRequestResponse): PaymentNotification {
     return {
       id: `${match.id}-${request.id}`,
       matchId: match.id,
       requestId: request.id,
       playerId: request.playerId,
-      playerName: `Jugador #${request.playerId}`,
+      playerName: request.playerName,
       matchTitle: match.title,
       submittedAt: request.submittedAt,
       status: request.status,

@@ -1,0 +1,54 @@
+<section class="chat-card" aria-labelledby="match-chat-title">
+  <header class="chat-header">
+    <h3 id="match-chat-title">Chat del partido</h3>
+    <span class="chat-status" [class.online]="connected()" role="status">
+      {{ connected() ? 'En vivo' : 'Reconectando…' }}
+    </span>
+  </header>
+
+  <div class="chat-messages" #scroller aria-live="polite">
+    @if (loading()) {
+      <p class="chat-empty">Cargando mensajes…</p>
+    } @else {
+      @if (hasOlder()) {
+        <button type="button" class="chat-older" [disabled]="loadingOlder()" (click)="loadOlder()">
+          {{ loadingOlder() ? 'Cargando…' : 'Ver mensajes anteriores' }}
+        </button>
+      }
+      @for (message of messages(); track message.id) {
+        <article class="chat-message" [class.own]="isOwn(message)">
+          @if (!isOwn(message)) {
+            <span class="chat-author">{{ message.authorName }}</span>
+          }
+          <p class="chat-content">{{ message.content }}</p>
+          <time class="chat-time" [attr.datetime]="message.sentAt">{{ formatTime(message.sentAt) }}</time>
+        </article>
+      } @empty {
+        <p class="chat-empty">Aún no hay mensajes. ¡Saluda al equipo y coordinen el partido!</p>
+      }
+    }
+  </div>
+
+  @if (error()) {
+    <p class="chat-error" role="alert">{{ error() }}</p>
+  }
+
+  @if (canPost()) {
+    <form class="chat-composer" (submit)="$event.preventDefault(); send()">
+      <label class="visually-hidden" for="match-chat-input">Escribe un mensaje</label>
+      <textarea
+        id="match-chat-input"
+        rows="2"
+        placeholder="Escribe un mensaje…"
+        [maxLength]="maxLength"
+        [value]="draft()"
+        (input)="onDraftInput($event)"
+        (keydown)="onKeydown($event)"></textarea>
+      <button type="submit" class="chat-send" [disabled]="!canSend()">
+        {{ sending() ? 'Enviando…' : 'Enviar' }}
+      </button>
+    </form>
+  } @else {
+    <p class="chat-readonly">El partido fue cancelado. El chat quedó en modo lectura.</p>
+  }
+</section>
