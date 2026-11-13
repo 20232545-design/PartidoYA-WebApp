@@ -80,7 +80,12 @@ export class CourtDetailComponent implements OnInit, AfterViewInit {
     return this.selectedSchedule.split('-')[0] || '';
   }
 
+  /**
+   * Fecha del partido: la de la reserva confirmada. No usa el formulario porque tras pagar se recargan
+   * los horarios y el horario seleccionado se limpia.
+   */
   get reservationMatchDate(): string {
+    if (this.reservation) return `${this.reservation.date}T${this.reservation.startTime}`;
     return this.selectedDate && this.selectedStartTime ? `${this.selectedDate}T${this.selectedStartTime}` : '';
   }
 

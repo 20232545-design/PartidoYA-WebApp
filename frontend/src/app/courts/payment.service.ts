@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, NgZone } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE_URL } from '@shared/services/api-base-url.token';
 
@@ -17,6 +17,7 @@ interface PaymentConfigResponse {
 @Injectable({ providedIn: 'root' })
 export class PaymentService {
   private readonly apiUrl = `${inject(API_BASE_URL)}/payments`;
+  private readonly zone = inject(NgZone);
   private scriptPromise: Promise<void> | null = null;
   private publicKey: string | null = null;
 
@@ -54,7 +55,10 @@ export class PaymentService {
     });
 
     return new Promise<string>((resolve, reject) => {
-      window.culqi = () => {
+      // Culqi invoca este callback desde su propio iframe, fuera de la zona de Angular. Sin `zone.run`,
+      // todo lo que sigue (la reserva por HTTP y el cambio de estado) tampoco actualizaría la pantalla
+      // y el botón quedaría en "Procesando pago..." aunque el pago se haya hecho.
+      window.culqi = () => this.zone.run(() => {
         if (window.Culqi?.token?.id) {
           const token = window.Culqi.token.id;
           window.Culqi.close();
@@ -63,7 +67,7 @@ export class PaymentService {
         }
         const message = window.Culqi?.error?.user_message || 'No se pudo generar el token de pago.';
         reject(new Error(message));
-      };
+      });
       window.Culqi.open();
     });
   }
