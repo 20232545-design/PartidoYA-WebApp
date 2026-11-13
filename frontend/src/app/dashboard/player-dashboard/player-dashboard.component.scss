@@ -889,7 +889,8 @@
   background: center center / cover no-repeat;
 }
 
-.mini-futbol { background-image: url('../../../assets/images/football-field.jpg'); }
+// El deporte llega como "Fútbol": la clase generada lleva tilde.
+.mini-futbol, .mini-fútbol { background-image: url('../../../assets/images/football-field.jpg'); }
 .mini-básquet { background-image: url('../../../assets/images/basketball-court.jpg'); }
 .mini-voleibol { background-image: url('../../../assets/images/volleyball-court.jpg'); }
 .mini-tenis { background-image: url('../../../assets/images/tennis-court.jpg'); }
