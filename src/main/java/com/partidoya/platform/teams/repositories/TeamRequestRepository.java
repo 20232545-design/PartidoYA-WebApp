@@ -17,6 +17,7 @@ public interface TeamRequestRepository extends JpaRepository<TeamRequestEntity, 
     List<TeamRequestEntity> findByTeamIdAndTypeAndStatusOrderByCreatedAt(Long teamId, String type, String status);
     List<TeamRequestEntity> findByTeamIdAndStatusOrderByCreatedAt(Long teamId, String status);
     List<TeamRequestEntity> findByUserIdAndTypeAndStatusOrderByCreatedAtDesc(Long userId, String type, String status);
+    List<TeamRequestEntity> findByUserIdAndTypeOrderByCreatedAtDesc(Long userId, String type);
     List<TeamRequestEntity> findByTeamIdInAndUserIdAndTypeAndStatus(List<Long> teamIds, Long userId, String type, String status);
     long countByTeamIdAndTypeAndStatus(Long teamId, String type, String status);
 }

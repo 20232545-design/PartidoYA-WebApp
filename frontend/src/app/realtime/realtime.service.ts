@@ -1,11 +1,27 @@
 import { inject, Injectable } from '@angular/core';
-import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
+import { Client, IMessage, ReconnectionTimeMode, StompSubscription } from '@stomp/stompjs';
 import { BehaviorSubject, distinctUntilChanged, Observable } from 'rxjs';
 import { BrowserSessionStore } from '@app/auth/browser-session.store';
 import { API_BASE_URL } from '@shared/services/api-base-url.token';
 
-const RECONNECT_DELAY_MS = 5_000;
+const INITIAL_RECONNECT_DELAY_MS = 1_000;
+const MAX_RECONNECT_DELAY_MS = 30_000;
+const MAX_CONSECUTIVE_FAILURES = 5;
 const HEARTBEAT_MS = 10_000;
+
+/** Presupuesto reiniciable para que una caída prolongada no produzca reconexiones infinitas. */
+export class ReconnectBudget {
+  private failures = 0;
+
+  constructor(private readonly maximum = MAX_CONSECUTIVE_FAILURES) {}
+
+  reset(): void { this.failures = 0; }
+
+  shouldRetryAfterFailure(): boolean {
+    this.failures += 1;
+    return this.failures < this.maximum;
+  }
+}
 
 /** Convierte la URL del API (`https://host/api/v1`) en la del endpoint STOMP (`wss://host/ws`). */
 export function websocketUrlFrom(apiUrl: string, origin = globalThis.location?.origin): string {
@@ -26,6 +42,7 @@ export class RealtimeService {
   private readonly sessionStore = inject(BrowserSessionStore);
   private readonly brokerUrl = websocketUrlFrom(inject(API_BASE_URL));
   private readonly connectedSubject = new BehaviorSubject<boolean>(false);
+  private readonly reconnectBudget = new ReconnectBudget();
   private client: Client | null = null;
 
   /** Emite `true` en cada conexión (incluidas las reconexiones) y `false` al perderla. */
@@ -34,11 +51,15 @@ export class RealtimeService {
   /** Idempotente: si ya hay una conexión activa o en curso no hace nada. */
   connect(): void {
     if (this.client?.active) return;
+    this.reconnectBudget.reset();
     const client = new Client({
       brokerURL: this.brokerUrl,
-      reconnectDelay: RECONNECT_DELAY_MS,
+      reconnectDelay: INITIAL_RECONNECT_DELAY_MS,
+      reconnectTimeMode: ReconnectionTimeMode.EXPONENTIAL,
+      maxReconnectDelay: MAX_RECONNECT_DELAY_MS,
       heartbeatIncoming: HEARTBEAT_MS,
       heartbeatOutgoing: HEARTBEAT_MS,
+      discardWebsocketOnCommFailure: true,
       // Se evalúa en cada intento, así una reconexión usa siempre el token vigente.
       beforeConnect: async stompClient => {
         const token = this.sessionStore.token();
@@ -48,11 +69,18 @@ export class RealtimeService {
         }
         stompClient.connectHeaders = { Authorization: `Bearer ${token}` };
       },
-      onConnect: () => this.connectedSubject.next(true),
-      onWebSocketClose: () => this.connectedSubject.next(false),
+      onConnect: () => {
+        this.reconnectBudget.reset();
+        this.connectedSubject.next(true);
+      },
+      onWebSocketClose: () => {
+        this.connectedSubject.next(false);
+        if (this.client !== client || !client.active) return;
+        if (!this.reconnectBudget.shouldRetryAfterFailure()) void this.disconnectClient(client);
+      },
       onStompError: () => {
         // Rechazo en el CONNECT (token vencido o inválido): reintentar no lo arreglaría.
-        if (!this.connectedSubject.value) void this.disconnect();
+        if (this.client === client && !this.connectedSubject.value) void this.disconnectClient(client);
       }
     });
     this.client = client;
@@ -61,9 +89,8 @@ export class RealtimeService {
 
   async disconnect(): Promise<void> {
     const client = this.client;
-    this.client = null;
-    this.connectedSubject.next(false);
-    await client?.deactivate();
+    if (client) await this.disconnectClient(client);
+    else this.connectedSubject.next(false);
   }
 
   /**
@@ -90,5 +117,11 @@ export class RealtimeService {
         if (stompSubscription && this.client?.connected) stompSubscription.unsubscribe();
       };
     });
+  }
+
+  private async disconnectClient(client: Client): Promise<void> {
+    if (this.client === client) this.client = null;
+    this.connectedSubject.next(false);
+    await client.deactivate();
   }
 }

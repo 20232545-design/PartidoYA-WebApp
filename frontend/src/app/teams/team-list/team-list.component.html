@@ -1,65 +1,84 @@
 <main class="teams-page">
   <div class="toolbar">
-    <div>
-      <span class="eyebrow">Comunidad</span>
-      <h1>Equipos permanentes</h1>
-    </div>
-    @if (auth.isPlayerPlan()) {
-      <a class="btn btn-primary" routerLink="/equipos/crear">Crear equipo</a>
-    }
+    <div><span class="eyebrow">Comunidad</span><h1>Equipos</h1></div>
+    @if (auth.isPlayerPlan()) { <a class="btn btn-primary" routerLink="/equipos/crear">Crear equipo</a> }
   </div>
 
-  <form class="filters" (ngSubmit)="load()">
-    <input [(ngModel)]="search" name="search" placeholder="Buscar por nombre">
-    <select [(ngModel)]="sport" name="sport">
-      <option value="">Todos los deportes</option>
-      <option>Fútbol</option>
-      <option>Básquet</option>
-      <option>Voleibol</option>
-      <option>Tenis</option>
-    </select>
-    <input [(ngModel)]="district" name="district" placeholder="Distrito">
-    <select [(ngModel)]="level" name="level">
-      <option value="">Todos los niveles</option>
-      <option value="BEGINNER">Básico</option>
-      <option value="INTERMEDIATE">Intermedio</option>
-      <option value="ADVANCED">Avanzado</option>
-    </select>
-    <label><input type="checkbox" [(ngModel)]="open" name="open"> Aceptan integrantes</label>
-    <button class="btn btn-primary">Buscar</button>
-  </form>
+  <nav class="catalog-tabs" aria-label="Secciones de equipos">
+    <button type="button" [class.active]="activeTab === 'explore'" (click)="selectTab('explore')">Explorar equipos</button>
+    @if (auth.isPlayerPlan()) {
+      <button type="button" [class.active]="activeTab === 'mine'" (click)="selectTab('mine')">Mis equipos</button>
+      <button type="button" [class.active]="activeTab === 'requests'" (click)="selectTab('requests')">Solicitudes e invitaciones</button>
+    }
+  </nav>
 
+  @if (activeTab === 'explore') {
+    <form class="filters catalog-filters" (ngSubmit)="applyFilters()">
+      <label>Nombre<input [(ngModel)]="search" name="search" placeholder="Buscar por nombre" (input)="searchChanged()"></label>
+      <label>Deporte<select [(ngModel)]="sport" name="sport" (change)="applyFilters()"><option value="">Todos</option><option>Fútbol</option><option>Básquet</option><option>Voleibol</option><option>Tenis</option></select></label>
+      <label>Distrito<input [(ngModel)]="district" name="district" placeholder="Todos los distritos"></label>
+      <label>Nivel<select [(ngModel)]="level" name="level" (change)="applyFilters()"><option value="">Todos</option><option value="BEGINNER">Básico</option><option value="INTERMEDIATE">Intermedio</option><option value="ADVANCED">Avanzado</option></select></label>
+      <label>Reclutamiento<select [(ngModel)]="recruitment" name="recruitment" (change)="applyFilters()"><option value="">Todos</option><option value="open">Acepta solicitudes</option><option value="closed">Cerrado</option></select></label>
+      <div class="filter-actions"><button class="btn btn-primary">Buscar</button><button type="button" class="btn btn-secondary" (click)="clearFilters()">Limpiar</button></div>
+    </form>
+  }
+
+  @if (error) { <div class="error" role="alert">{{ error }}</div> }
   @if (loading) {
     <div class="loading">Cargando equipos...</div>
-  } @else if (error) {
-    <div class="error">{{ error }}</div>
-  } @else if (!teams.length) {
-    <div class="empty">No encontramos equipos con esos filtros.</div>
-  } @else {
-    <section class="grid">
-      @for (team of teams; track team.id) {
-        <a class="card" [routerLink]="['/equipos', team.id]">
-          <div class="logo">
-            @if (team.logoUrl) {
-              <img class="logo" [src]="team.logoUrl" [alt]="'Escudo de ' + team.name">
-            } @else {
-              <span>{{ initial(team) }}</span>
-            }
-          </div>
-          <h2>{{ team.name }}</h2>
-          <div class="chips">
-            <span class="chip">{{ team.sport }}</span>
-            <span class="chip">{{ team.competitiveLevel }}</span>
-          </div>
-          <p class="muted">{{ team.district || 'Sin distrito' }} · {{ team.memberCount }} integrantes</p>
-          <p>{{ team.description }}</p>
-        </a>
+  } @else if (activeTab === 'explore') {
+    <div class="results-summary">{{ totalElements }} {{ totalElements === 1 ? 'equipo encontrado' : 'equipos encontrados' }}</div>
+    @if (!teams.length) {
+      <div class="empty">No encontramos equipos con esos filtros.</div>
+    } @else {
+      <section class="team-grid" aria-label="Catálogo de equipos">
+        @for (team of teams; track team.id) {
+          <article class="team-card">
+            <div class="team-card-header">
+              <div class="team-logo">
+                @if (team.logoUrl) { <img [src]="team.logoUrl" [alt]="'Escudo de ' + team.name" (error)="imageFailed(team)"> }
+                @else { <span aria-hidden="true">{{ initial(team) }}</span> }
+              </div>
+              <div class="team-card-heading"><h2>{{ team.name }}</h2><span class="recruitment" [class.closed]="!team.openToRequests || team.memberCount >= team.maxMembers">{{ recruitmentLabel(team) }}</span></div>
+            </div>
+            <div class="chips"><span class="chip">{{ team.sport }}</span><span class="chip">{{ levelLabel(team.competitiveLevel) }}</span></div>
+            <p class="team-description">{{ team.description }}</p>
+            <dl class="team-facts">
+              <div><dt>Ubicación</dt><dd>{{ team.district || 'No indicada' }}</dd></div><div><dt>Capitán</dt><dd>{{ team.captainName }}</dd></div>
+              <div><dt>Integrantes</dt><dd>{{ team.memberCount }} / {{ team.maxMembers }}</dd></div><div><dt>Creado</dt><dd>{{ team.createdAt | date:'dd/MM/yyyy' }}</dd></div>
+            </dl>
+            <div class="membership-state">
+              @if (isCaptain(team)) { <span>Eres capitán</span> } @else if (isMember(team)) { <span>Ya eres integrante</span> } @else if (isPending(team)) { <span>Solicitud pendiente</span> }
+            </div>
+            <div class="actions card-actions">
+              @if (isCaptain(team)) { <a class="btn btn-primary" [routerLink]="['/equipos', team.id, 'administrar']">Administrar equipo</a> }
+              @else { <a class="btn btn-secondary" [routerLink]="['/equipos', team.id]">Ver equipo</a> }
+              @if (auth.isPlayerPlan() && canApply(team)) { <button class="btn btn-primary" type="button" [disabled]="actionTeamId !== null" (click)="apply(team)">{{ actionTeamId === team.id ? 'Enviando...' : 'Solicitar unirme' }}</button> }
+            </div>
+          </article>
+        }
+      </section>
+      @if (totalPages > 1) {
+        <nav class="pagination" aria-label="Páginas del catálogo">
+          <button class="btn btn-secondary" [disabled]="page === 0" (click)="goToPage(page - 1)">Anterior</button>
+          @for (pageNumber of visiblePages; track pageNumber) { <button class="page-number" [class.active]="pageNumber === page" [attr.aria-current]="pageNumber === page ? 'page' : null" (click)="goToPage(pageNumber)">{{ pageNumber + 1 }}</button> }
+          <button class="btn btn-secondary" [disabled]="page + 1 >= totalPages" (click)="goToPage(page + 1)">Siguiente</button>
+        </nav>
       }
+    }
+  } @else if (activeTab === 'mine' && myTeams) {
+    <section>
+      <h2>Equipos que administras</h2>
+      @if (!myTeams.administered.length) { <div class="empty">Todavía no administras equipos.</div> }
+      <div class="team-grid compact-grid">@for (team of myTeams.administered; track team.id) { <article class="team-card compact-card"><strong>{{ team.name }}</strong><span class="meta">{{ team.sport }} · {{ team.memberCount }} integrantes</span><div class="actions"><a class="btn btn-primary" [routerLink]="['/equipos',team.id,'administrar']">Administrar</a><a class="btn btn-secondary" [routerLink]="['/equipos',team.id]">Ver</a></div></article> }</div>
+      <h2>Equipos donde participas</h2>
+      @if (!myTeams.memberships.length) { <div class="empty">Aún no perteneces a otros equipos.</div> }
+      <div class="team-grid compact-grid">@for (team of myTeams.memberships; track team.id) { <article class="team-card compact-card"><strong>{{ team.name }}</strong><span class="meta">{{ team.sport }} · Capitán: {{ team.captainName }}</span><a class="btn btn-secondary" [routerLink]="['/equipos',team.id]">Ver equipo</a></article> }</div>
     </section>
-    <div class="pagination">
-      <button class="btn btn-secondary" [disabled]="page === 0" (click)="load(page - 1)">Anterior</button>
-      <span>{{ page + 1 }} / {{ totalPages }}</span>
-      <button class="btn btn-secondary" [disabled]="page + 1 >= totalPages" (click)="load(page + 1)">Siguiente</button>
-    </div>
+  } @else if (activeTab === 'requests' && myTeams) {
+    <section class="request-columns">
+      <div class="panel"><h2>Solicitudes enviadas</h2>@if (!myTeams.applications.length) { <div class="empty">No has enviado solicitudes.</div> } @for (request of myTeams.applications; track request.id) { <div class="request-row"><div><strong>{{ request.teamName }}</strong><div class="meta">{{ request.createdAt | date:'dd/MM/yyyy' }}</div></div><span class="request-status">{{ requestStatus(request.status) }}</span></div> }</div>
+      <div class="panel"><h2>Invitaciones recibidas</h2>@if (!myTeams.invitations.length) { <div class="empty">No tienes invitaciones pendientes.</div> } @for (invitation of myTeams.invitations; track invitation.id) { <div class="request-row"><strong>{{ invitation.teamName }}</strong><div class="actions"><button class="btn btn-primary" [disabled]="actionTeamId !== null" (click)="respondInvitation(invitation.id,'accept')">Aceptar</button><button class="btn btn-secondary" [disabled]="actionTeamId !== null" (click)="respondInvitation(invitation.id,'reject')">Rechazar</button></div></div> }</div>
+    </section>
   }
 </main>

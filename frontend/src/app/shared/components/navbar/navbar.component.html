@@ -2,16 +2,18 @@
   <div class="container navbar-inner">
     <a routerLink="/" class="navbar-brand">PartidoYA</a>
     <div class="navbar-links">
-      <a routerLink="/home" class="nav-link">Dashboard</a>
+      <a routerLink="/home" routerLinkActive="active" class="nav-link">Dashboard</a>
       @if (!isLoggedIn || canUsePlayerFeatures) {
-        <a routerLink="/deportes" class="nav-link">Partidos</a>
-        <a routerLink="/canchas" class="nav-link">Canchas</a>
-        <a routerLink="/equipos" class="nav-link">Equipos</a>
+        <a routerLink="/deportes" routerLinkActive="active" class="nav-link">Partidos</a>
+        <a routerLink="/canchas" routerLinkActive="active" class="nav-link">Canchas</a>
+      }
+      @if (canUsePlayerFeatures) {
+        <a routerLink="/equipos" routerLinkActive="active" class="nav-link">Equipos</a>
       }
       @if (canManageCourts) {
-        <a routerLink="/admin-canchas" class="nav-link">Administrar canchas</a>
+        <a routerLink="/admin-canchas" routerLinkActive="active" class="nav-link">Administrar canchas</a>
       }
-      <a routerLink="/contactanos" class="nav-link">Contáctanos</a>
+      <a routerLink="/contactanos" routerLinkActive="active" class="nav-link">Contáctanos</a>
     </div>
     <div class="navbar-actions">
       @if (isLoggedIn) {
@@ -52,7 +54,7 @@
               }
               <a routerLink="/mi-perfil" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mi perfil</a>
               @if (canUsePlayerFeatures) {
-                <a routerLink="/mis-equipos" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mis equipos</a>
+                <a routerLink="/equipos" [queryParams]="{tab: 'mine'}" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mis equipos</a>
               }
               <a routerLink="/mi-suscripcion" class="dropdown-item" role="menuitem" (click)="closeUserMenu()">Mi suscripción</a>
               <button type="button" class="dropdown-item" role="menuitem" (click)="logout()">Cerrar sesión</button>

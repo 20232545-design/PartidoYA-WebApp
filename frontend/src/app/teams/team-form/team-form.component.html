@@ -1,1 +1,69 @@
-<main class="teams-page"><span class="eyebrow">{{id?'Administración':'Nuevo equipo'}}</span><h1>{{id?'Editar equipo':'Crea tu equipo'}}</h1><form class="panel form-grid" [formGroup]="form" (ngSubmit)="save()"><label class="field">Nombre<input formControlName="name">@if(form.controls.name.touched&&form.controls.name.invalid){<small>Usa entre 3 y 80 caracteres.</small>}</label><label class="field">Deporte<select formControlName="sport"><option>Fútbol</option><option>Básquet</option><option>Voleibol</option><option>Tenis</option></select></label><label class="field full">Descripción<textarea formControlName="description"></textarea></label><label class="field">Distrito opcional<input formControlName="district"></label><label class="field">Nivel<select formControlName="competitiveLevel"><option value="BEGINNER">Básico</option><option value="INTERMEDIATE">Intermedio</option><option value="ADVANCED">Avanzado</option></select></label><label class="field">Escudo<input type="file" accept="image/png,image/jpeg,image/webp" (change)="selectLogo($event)"></label><label class="field"><span><input type="checkbox" formControlName="openToRequests"> Abierto a solicitudes</span></label>@if(error){<div class="error field full">{{error}}</div>}<div class="actions field full"><button class="btn btn-primary" [disabled]="loading">{{loading?'Guardando...':'Guardar equipo'}}</button><a class="btn btn-secondary" routerLink="/mis-equipos">Cancelar</a></div></form></main>
+<main class="teams-page">
+  <span class="eyebrow">{{ id ? 'Administración' : 'Nuevo equipo' }}</span>
+  <h1>{{ id ? 'Editar equipo' : 'Crea tu equipo' }}</h1>
+
+  <form class="panel form-grid team-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    @if (formError) { <div class="form-alert" role="alert">{{ formError }}</div> }
+
+    <label class="field">
+      Nombre <span aria-hidden="true">*</span>
+      <input formControlName="name" maxlength="80" autocomplete="off" [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid" aria-describedby="name-error">
+      @if (fieldError('name'); as fieldMessage) { @if (fieldMessage) { <small id="name-error">{{ fieldMessage }}</small> } }
+    </label>
+
+    <label class="field">
+      Deporte <span aria-hidden="true">*</span>
+      <select formControlName="sport" [attr.aria-invalid]="form.controls.sport.touched && form.controls.sport.invalid" aria-describedby="sport-error">
+        <option value="" disabled>Selecciona un deporte</option><option>Fútbol</option><option>Básquet</option><option>Voleibol</option><option>Tenis</option>
+      </select>
+      @if (fieldError('sport'); as fieldMessage) { @if (fieldMessage) { <small id="sport-error">{{ fieldMessage }}</small> } }
+    </label>
+
+    <label class="field full">
+      Descripción <span aria-hidden="true">*</span>
+      <textarea formControlName="description" maxlength="500" [attr.aria-invalid]="form.controls.description.touched && form.controls.description.invalid" aria-describedby="description-error"></textarea>
+      @if (fieldError('description'); as fieldMessage) { @if (fieldMessage) { <small id="description-error">{{ fieldMessage }}</small> } }
+    </label>
+
+    <label class="field">Distrito opcional<input formControlName="district" maxlength="80"></label>
+
+    <label class="field">
+      Nivel competitivo <span aria-hidden="true">*</span>
+      <select formControlName="competitiveLevel" [attr.aria-invalid]="form.controls.competitiveLevel.touched && form.controls.competitiveLevel.invalid" aria-describedby="level-error">
+        <option value="" disabled>Selecciona un nivel</option><option value="BEGINNER">Básico</option><option value="INTERMEDIATE">Intermedio</option><option value="ADVANCED">Avanzado</option>
+      </select>
+      @if (fieldError('competitiveLevel'); as fieldMessage) { @if (fieldMessage) { <small id="level-error">{{ fieldMessage }}</small> } }
+    </label>
+
+    <div class="field full">
+      <span>Escudo opcional</span>
+      <div class="logo-picker">
+        @if (previewUrl || existingLogoUrl) {
+          <div class="logo-preview"><img [src]="previewUrl || existingLogoUrl" alt="Vista previa del escudo" (error)="existingLogoUrl = null"></div>
+        }
+        <div class="field">
+          <input #logoInput type="file" accept="image/png,image/jpeg,image/webp" (change)="selectLogo($event)" [attr.aria-invalid]="!!logoError" aria-describedby="logo-help logo-error">
+          <span id="logo-help" class="meta">JPG, PNG o WebP. Máximo 5 MB.</span>
+          @if (logoError) { <small id="logo-error">{{ logoError }}</small> }
+          @if (logo || logoError) { <button type="button" class="btn btn-secondary" (click)="removeSelectedLogo()">Quitar imagen seleccionada</button> }
+        </div>
+      </div>
+    </div>
+
+    <label class="field"><span><input type="checkbox" formControlName="openToRequests"> Abierto a solicitudes</span></label>
+
+    @if (message) { <div class="notice field full" role="status">{{ message }}</div> }
+    @if (error) { <div class="error field full" role="alert">{{ error }}</div> }
+
+    <div class="actions field full">
+      <button type="submit" class="btn btn-primary" [disabled]="loading">
+        {{ loading ? 'Guardando...' : (logoPending ? 'Reintentar escudo' : 'Guardar equipo') }}
+      </button>
+      @if (logoPending) {
+        <button type="button" class="btn btn-secondary" [disabled]="loading" (click)="continueWithoutLogo()">Continuar sin escudo</button>
+      } @else {
+        <a class="btn btn-secondary" routerLink="/equipos" [queryParams]="{tab: 'mine'}">Cancelar</a>
+      }
+    </div>
+  </form>
+</main>

@@ -20,6 +20,9 @@ import com.partidoya.platform.users.repositories.UserPersistenceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,11 +30,13 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doThrow;
 
 class TeamServiceTest {
     private TeamRepository teams;
@@ -39,6 +44,7 @@ class TeamServiceTest {
     private TeamRequestRepository requests;
     private TeamChallengeRepository challenges;
     private UserPersistenceRepository users;
+    private TeamImageStorage images;
     private TeamService service;
 
     @BeforeEach
@@ -49,7 +55,7 @@ class TeamServiceTest {
         challenges = mock(TeamChallengeRepository.class);
         users = mock(UserPersistenceRepository.class);
         var profiles = mock(ProfilePersistenceRepository.class);
-        var images = mock(TeamImageStorage.class);
+        images = mock(TeamImageStorage.class);
         service = new TeamService(teams, memberships, requests, challenges, users, profiles, images);
         when(teams.save(any())).thenAnswer(invocation -> {
             var entity = invocation.<TeamEntity>getArgument(0);
@@ -87,6 +93,22 @@ class TeamServiceTest {
     }
 
     @Test
+    void paginatesCatalogWithStableNewestFirstOrder() {
+        when(teams.search(nullable(String.class), nullable(String.class), nullable(String.class),
+                nullable(String.class), nullable(Boolean.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        service.search(null, null, null, null, null, 0, 9, null);
+
+        var pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(teams).search(nullable(String.class), nullable(String.class), nullable(String.class),
+                nullable(String.class), nullable(Boolean.class), pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(9);
+        assertThat(pageable.getValue().getSort().getOrderFor("createdAt").isDescending()).isTrue();
+        assertThat(pageable.getValue().getSort().getOrderFor("id").isDescending()).isTrue();
+    }
+
+    @Test
     void rejectsTeamCreationByNonPlayer() {
         var courtAdmin = new AuthenticatedUser(9L, "court@example.com", Role.ADMIN_CANCHA, Plan.CANCHA_EMPRENDEDOR);
 
@@ -112,6 +134,21 @@ class TeamServiceTest {
         assertThatThrownBy(() -> service.invite(auth(1L), 10L, 2L))
                 .isInstanceOf(ResourceConflictException.class);
         verify(teams, times(2)).findLockedById(10L);
+    }
+
+    @Test
+    void rejectsApplicationWhenTeamReachedItsCapacity() {
+        var team = team(10L, 1L, "Fútbol");
+        team.setMaxMembers(1);
+        when(teams.findById(10L)).thenReturn(Optional.of(team));
+        when(teams.findLockedById(10L)).thenReturn(Optional.of(team));
+        when(memberships.findByTeamIdAndUserId(10L, 2L)).thenReturn(Optional.empty());
+        when(memberships.countByTeamIdAndStatus(10L, "ACTIVE")).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.apply(auth(2L), 10L))
+                .isInstanceOf(ResourceConflictException.class)
+                .hasMessageContaining("límite");
+        verify(requests, never()).save(any());
     }
 
     @Test
@@ -213,6 +250,54 @@ class TeamServiceTest {
         opponent.setSport("Básquet");
         assertThatThrownBy(() -> service.challenge(auth(1L), 11L, new TeamResources.CreateChallenge(10L, null)))
                 .isInstanceOf(ResourceConflictException.class);
+    }
+
+    @Test
+    void replacesLogoAndDeletesPreviousCloudinaryAsset() {
+        var team=team(10L,1L,"Fútbol");
+        team.setLogoPublicId("old-logo");
+        team.setLogoUrl("https://cdn.test/old.jpg");
+        when(teams.findLockedById(10L)).thenReturn(Optional.of(team));
+        when(images.upload(any(),any(),any())).thenReturn(
+                new TeamImageStorage.UploadedTeamImage("new-logo","https://cdn.test/new.jpg"));
+        var file=new MockMultipartFile("file","logo.jpg","image/jpeg",
+                new byte[]{(byte)0xff,(byte)0xd8,(byte)0xff,0});
+
+        var result=service.uploadLogo(auth(1L),10L,file);
+
+        assertThat(result.logoUrl()).isEqualTo("https://cdn.test/new.jpg");
+        assertThat(team.getLogoPublicId()).isEqualTo("new-logo");
+        verify(images).delete("old-logo");
+    }
+
+    @Test
+    void removesNewCloudinaryAssetWhenDatabaseUpdateFails() {
+        var team=team(10L,1L,"Fútbol");
+        when(teams.findLockedById(10L)).thenReturn(Optional.of(team));
+        when(images.upload(any(),any(),any())).thenReturn(
+                new TeamImageStorage.UploadedTeamImage("orphan-logo","https://cdn.test/orphan.jpg"));
+        doThrow(new RuntimeException("database unavailable")).when(teams).save(team);
+        var file=new MockMultipartFile("file","logo.png","image/png",
+                new byte[]{(byte)0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,0});
+
+        assertThatThrownBy(()->service.uploadLogo(auth(1L),10L,file))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("database unavailable");
+        verify(images).delete("orphan-logo");
+    }
+
+    @Test
+    void keepsExistingTeamWhenImageProviderFails() {
+        var team=team(10L,1L,"Fútbol");
+        when(teams.findLockedById(10L)).thenReturn(Optional.of(team));
+        when(images.upload(any(),any(),any())).thenThrow(new TeamImageStorageException("provider unavailable"));
+        var file=new MockMultipartFile("file","logo.webp","image/webp",
+                new byte[]{'R','I','F','F',0,0,0,0,'W','E','B','P',0});
+
+        assertThatThrownBy(()->service.uploadLogo(auth(1L),10L,file))
+                .isInstanceOf(TeamImageStorageException.class);
+        assertThat(team.getLogoUrl()).isNull();
+        verify(teams,never()).save(team);
     }
 
     private static AuthenticatedUser auth(Long id) {

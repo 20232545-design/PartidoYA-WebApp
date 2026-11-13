@@ -41,6 +41,7 @@ class TeamWorkflowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.administered.length()").value(0))
                 .andExpect(jsonPath("$.memberships.length()").value(0))
+                .andExpect(jsonPath("$.applications.length()").value(0))
                 .andExpect(jsonPath("$.pendingCount").value(0));
 
         var name = "Leones " + UUID.randomUUID().toString().substring(0, 8);
@@ -52,7 +53,9 @@ class TeamWorkflowIntegrationTest {
                 .andExpect(jsonPath("$.name").value(name))
                 .andExpect(jsonPath("$.captainId").value(player.id()))
                 .andExpect(jsonPath("$.captain").value(true))
+                .andExpect(jsonPath("$.viewerRelationship").value("CAPTAIN"))
                 .andExpect(jsonPath("$.memberCount").value(1))
+                .andExpect(jsonPath("$.maxMembers").value(30))
                 .andReturn();
         var teamId = objectMapper.readTree(createResult.getResponse().getContentAsString()).path("id").asLong();
 
@@ -61,12 +64,36 @@ class TeamWorkflowIntegrationTest {
         mockMvc.perform(multipart("/api/v1/teams/{id}/logo", teamId).file(logo)
                         .header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.logoUrl").value("https://example.test/team-" + teamId + ".png"));
+                .andExpect(jsonPath("$.logoUrl").value("https://example.test/team-" + teamId + "-shield.png"));
 
         mockMvc.perform(get("/api/v1/teams/{id}", teamId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value(name))
-                .andExpect(jsonPath("$.logoUrl").value("https://example.test/team-" + teamId + ".png"));
+                .andExpect(jsonPath("$.logoUrl").value("https://example.test/team-" + teamId + "-shield.png"));
+
+        var replacement = new MockMultipartFile("file", "replacement.jpg", "image/jpeg",
+                new byte[]{(byte) 0xff, (byte) 0xd8, (byte) 0xff, 0, 0, 0});
+        mockMvc.perform(multipart("/api/v1/teams/{id}/logo", teamId).file(replacement)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.logoUrl").value("https://example.test/team-" + teamId + "-replacement.jpg"));
+
+        var webp = new MockMultipartFile("file", "replacement.webp", "image/webp",
+                new byte[]{'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P', 0});
+        mockMvc.perform(multipart("/api/v1/teams/{id}/logo", teamId).file(webp)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.logoUrl").value("https://example.test/team-" + teamId + "-replacement.webp"));
+
+        var invalid = new MockMultipartFile("file", "notes.txt", "text/plain", "not-an-image".getBytes());
+        mockMvc.perform(multipart("/api/v1/teams/{id}/logo", teamId).file(invalid)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isBadRequest());
+
+        var oversized = new MockMultipartFile("file", "large.jpg", "image/jpeg", new byte[5_000_001]);
+        mockMvc.perform(multipart("/api/v1/teams/{id}/logo", teamId).file(oversized)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/api/v1/teams/mine").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
@@ -104,6 +131,29 @@ class TeamWorkflowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(teamBody("Cambio no autorizado")))
                 .andExpect(status().isForbidden());
+
+        var logo = new MockMultipartFile("file", "shield.png", "image/png",
+                new byte[]{(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0});
+        mockMvc.perform(multipart("/api/v1/teams/{id}/logo", teamId).file(logo)
+                        .header("Authorization", bearer(outsiderToken)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/v1/teams/{id}/requests", teamId)
+                        .header("Authorization", bearer(outsiderToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+        mockMvc.perform(post("/api/v1/teams/{id}/requests", teamId)
+                        .header("Authorization", bearer(outsiderToken)))
+                .andExpect(status().isConflict());
+        mockMvc.perform(get("/api/v1/teams/mine").header("Authorization", bearer(outsiderToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.applications.length()").value(1))
+                .andExpect(jsonPath("$.applications[0].status").value("PENDING"));
+        mockMvc.perform(get("/api/v1/teams/{id}", teamId).header("Authorization", bearer(outsiderToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.viewerRelationship").value("PENDING"))
+                .andExpect(jsonPath("$.captain").value(false))
+                .andExpect(jsonPath("$.member").value(false));
     }
 
     private RegisteredUser registerPlayer(String email) throws Exception {

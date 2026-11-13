@@ -1,13 +1,14 @@
 <main class="teams-page">
-  @if (loading) {
+  @if (teamLoading) {
     <div class="loading">Cargando equipo...</div>
-  } @else if (error && !team) {
-    <div class="error">{{ error }}</div>
+  } @else if (teamError && !team) {
+    <div class="error" role="alert">{{ teamError }}</div>
+    <div class="actions"><button type="button" class="btn btn-primary" (click)="load()">Reintentar</button></div>
   } @else if (team) {
     <section class="card hero">
       <div class="logo">
         @if (team.logoUrl) {
-          <img class="logo" [src]="team.logoUrl" [alt]="'Escudo de ' + team.name">
+          <img class="logo" [src]="team.logoUrl" [alt]="'Escudo de ' + team.name" (error)="imageFailed()">
         } @else {
           <span>{{ team.name[0] }}</span>
         }
@@ -18,19 +19,26 @@
         <div class="chips">
           <span class="chip">{{ level(team.competitiveLevel) }}</span>
           <span class="chip">{{ team.district || 'Sin distrito' }}</span>
-          <span class="chip">{{ team.openToRequests ? 'Reclutando' : 'Privado' }}</span>
+          <span class="chip">{{ team.memberCount >= team.maxMembers ? 'Equipo completo' : (team.openToRequests ? 'Reclutando' : 'No acepta solicitudes') }}</span>
         </div>
         <p>{{ team.description }}</p>
-        <p class="meta">Capitán: {{ team.captainName }} · {{ team.memberCount }} integrantes · Creado {{ team.createdAt | date:'mediumDate' }}</p>
+        <p class="meta">Capitán: {{ team.captainName }} · {{ team.memberCount }} / {{ team.maxMembers }} integrantes · Creado {{ team.createdAt | date:'mediumDate' }}</p>
         <div class="actions">
-          @if (team.captain) {
+          @if (isCaptain) {
             <a class="btn btn-primary" [routerLink]="['/equipos', team.id, 'administrar']">Administrar</a>
-          } @else if (team.member) {
-            <button class="btn btn-danger" (click)="leave()">Abandonar</button>
-          } @else if (auth.isPlayerPlan() && team.openToRequests && !team.pendingRequest) {
-            <button class="btn btn-primary" (click)="apply()">Solicitar unirme</button>
-          } @else if (team.pendingRequest) {
+          } @else if (isMember) {
+            <span class="notice">Ya eres integrante</span>
+            <button class="btn btn-danger" [disabled]="actionLoading" (click)="leave()">Abandonar</button>
+          } @else if (auth.isPlayerPlan() && canApply) {
+            <button class="btn btn-primary" [disabled]="actionLoading" (click)="apply()">{{ actionLoading ? 'Enviando...' : 'Solicitar unirme' }}</button>
+          } @else if (isPending) {
             <span class="notice">Solicitud pendiente</span>
+          } @else if (team.viewerRelationship === 'ANONYMOUS' && auth.isPlayerPlan()) {
+            <span class="notice">No pudimos confirmar tu sesión para mostrar las acciones del equipo.</span>
+          } @else if (team.memberCount >= team.maxMembers) {
+            <span class="notice">Equipo completo</span>
+          } @else if (!team.openToRequests) {
+            <span class="notice">No acepta solicitudes</span>
           }
         </div>
       </div>
@@ -39,14 +47,20 @@
     @if (message) {
       <div class="notice">{{ message }}</div>
     }
-    @if (error) {
-      <div class="error">{{ error }}</div>
+    @if (actionError) {
+      <div class="error" role="alert">{{ actionError }}</div>
     }
 
     <section class="tabs">
       <div class="panel">
         <h2>Integrantes</h2>
-        @for (member of members; track member.userId) {
+        @if (membersLoading) {
+          <div class="loading">Cargando integrantes...</div>
+        } @else if (membersError) {
+          <div class="error" role="alert">{{ membersError }}</div>
+        } @else if (!members.length) {
+          <div class="empty">Este equipo todavía no tiene integrantes visibles.</div>
+        } @else { @for (member of members; track member.userId) {
           <a class="member" [routerLink]="['/jugadores', member.userId]">
             @if (member.avatarUrl) {
               <img [src]="member.avatarUrl" [alt]="member.publicName">
@@ -56,7 +70,7 @@
               <div class="meta">{{ member.role === 'CAPTAIN' ? 'Capitán' : 'Integrante' }} · {{ level(member.skillLevel) }}</div>
             </div>
           </a>
-        }
+        } }
       </div>
 
       <div class="panel">
@@ -67,7 +81,11 @@
           <div class="empty">Las estadísticas aparecerán cuando existan resultados deportivos verificados.</div>
         }
 
-        @if (mine?.administered?.length) {
+        @if (relatedLoading) {
+          <div class="loading">Cargando tus equipos...</div>
+        } @else if (relatedError) {
+          <div class="error" role="alert">{{ relatedError }}</div>
+        } @else if (mine?.administered?.length) {
           <h2>Desafiar equipo</h2>
           <select [(ngModel)]="challengerTeamId">
             <option [ngValue]="null">Selecciona tu equipo</option>
@@ -78,7 +96,7 @@
             }
           </select>
           <textarea [(ngModel)]="challengeMessage" placeholder="Mensaje opcional"></textarea>
-          <button class="btn btn-primary" [disabled]="!challengerTeamId" (click)="challenge()">Enviar desafío</button>
+          <button class="btn btn-primary" [disabled]="!challengerTeamId || actionLoading" (click)="challenge()">Enviar desafío</button>
         }
       </div>
     </section>

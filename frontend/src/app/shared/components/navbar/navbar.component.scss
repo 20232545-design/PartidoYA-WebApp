@@ -36,6 +36,10 @@
   &:hover {
     color: #fff;
   }
+
+  &.active {
+    color: #c6f135;
+  }
 }
 
 .navbar-actions {
@@ -99,6 +103,10 @@
   color: rgba(255, 255, 255, 0.8);
   transition: color 0.2s;
   padding: 0.5rem 0;
+  max-width: min(220px, 24vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
   &:hover,
   &.active {
